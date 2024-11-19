@@ -1,48 +1,82 @@
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include "constants.h"
-#include "parser.h"
-#include "operations.h"
 #include "dirmanager.h"
 
-int main(int argc, char* argv[]) {
+int count_files(const char *dir_path){
+    int count = 0;
+    DIR *dir;
+    struct dirent *entry;
 
-  int n_files;
+    if ((dir = opendir(dir_path)) == NULL){
+        fprintf(stderr, "Failed to open directory\n");
+        closedir(dir);
+        return 0;
+    }
 
-  if (argc != 3){
-    fprintf(stderr, "Usage: %s <dir_path> <output_dir>\n", argv[0]);
-    return 1;
-  }
+    while ((entry = readdir(dir)) != NULL){
+        if (strstr(entry->d_name, ".job") != NULL){
+            count++;
+        }
+    }
 
-  if (kvs_init()) {
-    fprintf(stderr, "Failed to initialize KVS\n");
-    return 1;
-  }
-
-  n_files = count_files(argv[1]);
-  char files[n_files][MAX_JOB_FILE_NAME_SIZE];
-  register_files(argv[1], files);
-  
-
-  for (int i = 0; i < n_files; i++){
-    manage_file(files[i]);
-  }
+    closedir(dir);
+    return count;
+}
 
 
+void register_files(const char *dir_path, char files[][MAX_JOB_FILE_NAME_SIZE]){
+    int count = 0;
+    DIR *dir;
+    struct dirent *entry;
+
+    if ((dir = opendir(dir_path)) == NULL){
+        fprintf(stderr, "Failed to open directory\n");
+        closedir(dir);
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL){
+        if (strstr(entry->d_name, ".job") != NULL){
+            int result = snprintf(files[count], MAX_JOB_FILE_NAME_SIZE, "%s/%s", dir_path, entry->d_name);
+            if(result > MAX_JOB_FILE_NAME_SIZE){
+                fprintf(stderr, "File name too long\n");
+                continue;
+            }
+            count++;
+        }
+    }
+
+    closedir(dir);
+    return;
+}
+
+int manage_file(const char *file_path){
+    int fd_in; int fd_out;
+    char file_out[MAX_JOB_FILE_NAME_SIZE];
 
 
+    fd_in = open(file_path, O_RDONLY);
+
+    if (fd_in == -1){
+        fprintf(stderr, "Failed to open file %s\n", file_path);
+        close(fd_in);
+        return 1;
+    }
+
+    strncpy(file_out, file_path, MAX_JOB_FILE_NAME_SIZE);
+    char *extension = strstr(file_out, ".job");
+    if (extension != NULL) {
+        strcpy(extension, ".out");
+    }
+
+    fd_out = open(file_out, O_WRONLY, O_CREAT, O_TRUNC);
+
+    if (fd_out == -1){
+        fprintf(stderr, "Failed to create .out file %s\n", file_out);
+        close(fd_in);
+        return 1;
+    }
 
 
-  /*
-  if (kvs_init()) {
-    fprintf(stderr, "Failed to initialize KVS\n");
-    return 1;
-  }
-
-  while (1) {
+  while (get_next(fd_in) != EOC) {
     char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
     char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
     unsigned int delay;
@@ -141,5 +175,5 @@ int main(int argc, char* argv[]) {
         return 0;
     }
   }
-  */
+  return 0;
 }

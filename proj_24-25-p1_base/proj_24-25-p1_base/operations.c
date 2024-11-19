@@ -33,6 +33,7 @@ int kvs_terminate() {
   }
 
   free_table(kvs_table);
+  kvs_table = NULL;
   return 0;
 }
 
