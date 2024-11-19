@@ -1,5 +1,6 @@
 #include "dirmanager.h"
 
+
 int count_files(const char *dir_path){
     int count = 0;
     DIR *dir;
@@ -43,7 +44,6 @@ void register_files(const char *dir_path, char files[][MAX_JOB_FILE_NAME_SIZE]){
             count++;
         }
     }
-
     closedir(dir);
     return;
 }
@@ -51,7 +51,6 @@ void register_files(const char *dir_path, char files[][MAX_JOB_FILE_NAME_SIZE]){
 int manage_file(const char *file_path){
     int fd_in; int fd_out;
     char file_out[MAX_JOB_FILE_NAME_SIZE];
-
 
     fd_in = open(file_path, O_RDONLY);
 
@@ -67,7 +66,7 @@ int manage_file(const char *file_path){
         strcpy(extension, ".out");
     }
 
-    fd_out = open(file_out, O_WRONLY, O_CREAT, O_TRUNC);
+    fd_out = open(file_out, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
     if (fd_out == -1){
         fprintf(stderr, "Failed to create .out file %s\n", file_out);
@@ -76,18 +75,19 @@ int manage_file(const char *file_path){
     }
 
 
-  while (get_next(fd_in) != EOC) {
+  
+
+  while (1) {
     char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
     char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
     unsigned int delay;
     size_t num_pairs;
 
-    printf("> ");
-    fflush(stdout);
+    //fflush(stdout);
 
-    switch (get_next(STDIN_FILENO)) {
+    switch (get_next(fd_in)) {
       case CMD_WRITE:
-        num_pairs = parse_write(STDIN_FILENO, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+        num_pairs = parse_write(fd_in, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
         if (num_pairs == 0) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
           continue;
@@ -100,38 +100,38 @@ int manage_file(const char *file_path){
         break;
 
       case CMD_READ:
-        num_pairs = parse_read_delete(STDIN_FILENO, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+        num_pairs = parse_read_delete(fd_in, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
         if (num_pairs == 0) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
           continue;
         }
 
-        if (kvs_read(num_pairs, keys)) {
+        if (kvs_read(num_pairs, keys, fd_out)) {
           fprintf(stderr, "Failed to read pair\n");
         }
         break;
 
       case CMD_DELETE:
-        num_pairs = parse_read_delete(STDIN_FILENO, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
+        num_pairs = parse_read_delete(fd_in, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
         if (num_pairs == 0) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
           continue;
         }
 
-        if (kvs_delete(num_pairs, keys)) {
+        if (kvs_delete(num_pairs, keys, fd_out)) {
           fprintf(stderr, "Failed to delete pair\n");
         }
         break;
 
       case CMD_SHOW:
 
-        kvs_show();
+        kvs_show(fd_out);
         break;
 
       case CMD_WAIT:
-        if (parse_wait(STDIN_FILENO, &delay, NULL) == -1) {
+        if (parse_wait(fd_in, &delay, NULL) == -1) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
           continue;
         }
@@ -175,5 +175,7 @@ int manage_file(const char *file_path){
         return 0;
     }
   }
+  close(fd_in);
+  close(fd_out);
   return 0;
 }

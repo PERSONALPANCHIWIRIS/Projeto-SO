@@ -12,8 +12,8 @@ int main(int argc, char* argv[]) {
 
   int n_files;
 
-  if (argc != 3){
-    fprintf(stderr, "Usage: %s <dir_path> <output_dir>\n", argv[0]);
+  if (argc != 2){
+    fprintf(stderr, "Usage: %s <dir_path> <backup_limit>\n", argv[0]);
     return 1;
   }
 
@@ -30,6 +30,8 @@ int main(int argc, char* argv[]) {
   for (int i = 0; i < n_files; i++){
     manage_file(files[i]);
   }
+
+  return 0;
 
 
 

@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.pl": "prolog",
+        "dirmanager.h": "c",
+        "parser.h": "c",
+        "limits.h": "c"
+    }
+}
