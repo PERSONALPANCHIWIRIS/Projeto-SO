@@ -72,15 +72,26 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
 }
 
 int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
+    int count_error = 0;
   if (kvs_table == NULL) {
     fprintf(stderr, "KVS state must be initialized\n");
     return 1;
   }
-
+    // alterei para colocar os parentesis retos e o newline, que é o formato que vem no enunciado
   for (size_t i = 0; i < num_pairs; i++) {
-    if (delete_pair(kvs_table, keys[i]) != 0) {
-      dprintf(fd_out, "(%s,KVSMISSING)", keys[i]);
+    if (delete_pair(kvs_table, keys[i]) != 0){
+        if(count_error == 0) {
+            dprintf(fd_out, "[(%s,KVSMISSING)", keys[i]);
+        }
+        else {
+            dprintf(fd_out, "(%s,KVSMISSING)", keys[i]);
+        }
+        count_error++;
     }
+  }
+
+  if(count_error != 0) {
+    dprintf(fd_out, "]\n");
   }
 
   return 0;

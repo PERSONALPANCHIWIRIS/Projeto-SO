@@ -1,0 +1,6 @@
+WRITE [(c1,v1)(BANANAS,bananas)(oeifjowef,hehe)(projetos,SO)(nove,catorze)]
+SHOW
+DELETE [f,nove,haha]
+DELETE [c1]
+SHOW
+READ [oeifjowef]

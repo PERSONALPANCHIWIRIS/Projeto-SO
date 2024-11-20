@@ -8,31 +8,20 @@
 #include "operations.h"
 #include "dirmanager.h"
 
+
+
 int main(int argc, char* argv[]) {
 
-  int n_files;
+    //REVER ISTO
+    if (argc != 2){
+        fprintf(stderr, "Usage: %s <dir_path> <backup_limit>\n", argv[0]);
+        return 1;
+    }
 
-  if (argc != 2){
-    fprintf(stderr, "Usage: %s <dir_path> <backup_limit>\n", argv[0]);
-    return 1;
-  }
+    iterates_files(argv[1]);
 
-  if (kvs_init()) {
-    fprintf(stderr, "Failed to initialize KVS\n");
-    return 1;
-  }
-
-  n_files = count_files(argv[1]);
-  char files[n_files][MAX_JOB_FILE_NAME_SIZE];
-  register_files(argv[1], files);
-  
-
-  for (int i = 0; i < n_files; i++){
-    manage_file(files[i]);
-  }
-
-  return 0;
-
+    return 0;
+}
 
 
 
@@ -144,4 +133,3 @@ int main(int argc, char* argv[]) {
     }
   }
   */
-}

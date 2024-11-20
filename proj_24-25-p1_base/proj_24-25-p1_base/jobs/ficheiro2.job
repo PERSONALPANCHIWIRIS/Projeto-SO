@@ -1,5 +1,5 @@
 #segundo ficheiro
-WRITE[(um,dois)(tres,quatro)(cinco,seis)(sete,oito)]
+WRITE [(um,dois)(tres,quatro)(cinco,seis)(sete,oito)]
 SHOW
 READ [um,cinco]
 WAIT 1000

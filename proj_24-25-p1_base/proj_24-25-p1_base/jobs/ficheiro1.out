@@ -2,7 +2,17 @@
 (c1, v1)
 (fjje, dois)
 (projeto, SO)
-(f,KVSMISSING)(BANANAS, bananas)
+Waiting...
+[(f,KVSMISSING)]
+(BANANAS, bananas)
 (fjje, dois)
 (projeto, SO)
 [(fjje,dois)]
+Available commands:
+  WRITE [(key,value),(key2,value2),...]
+  READ [key,key2,...]
+  DELETE [key,key2,...]
+  SHOW
+  WAIT <delay_ms>
+  BACKUP
+  HELP
