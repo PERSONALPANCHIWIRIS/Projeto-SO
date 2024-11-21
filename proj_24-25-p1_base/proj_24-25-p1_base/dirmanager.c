@@ -8,19 +8,21 @@ void iterates_files(const char *dir_path) {
     char filepath[MAX_JOB_FILE_NAME_SIZE];
 
     if ((dir = opendir(dir_path)) == NULL){
-        fprintf(stderr, "Failed to open directory\n");
+        write(STDERR_FILENO, "Failed to open directory\n", 25);
         return;
     }
 
     while ((entry = readdir(dir)) != NULL){
         if (strstr(entry->d_name, ".job") != NULL){
 
-            int result = snprintf(filepath, MAX_JOB_FILE_NAME_SIZE, "%s/%s", dir_path, entry->d_name);
-
-            if (result > MAX_JOB_FILE_NAME_SIZE){
-               fprintf(stderr, "File name too long\n");
+            if ((strlen(dir_path) + strlen(entry->d_name) + 1) > MAX_JOB_FILE_NAME_SIZE){
+               write(STDERR_FILENO, "File name too long\n", 20);
                continue;
             }
+
+            strcpy(filepath, dir_path);
+            strcat(filepath, "/"); //concatenar
+            strcat(filepath, entry->d_name);
 
             manage_file(filepath);
         }
@@ -37,15 +39,15 @@ int manage_file(const char *file_path){
     char file_out[MAX_JOB_FILE_NAME_SIZE];
 
     if (kvs_init()) {
-        fprintf(stderr, "Failed to initialize KVS\n");
+        write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
         return 1;
     }
 
     fd_in = open(file_path, O_RDONLY);
 
     if (fd_in == -1){
-        fprintf(stderr, "Failed to open file %s\n", file_path);
-        close(fd_in);
+        write(STDERR_FILENO, "Failed to open input file %s\n", 26);
+        //close(fd_in);
         return 1;
     }
 
@@ -59,7 +61,7 @@ int manage_file(const char *file_path){
     fd_out = open(file_out, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
     if (fd_out == -1){
-        fprintf(stderr, "Failed to create .out file %s\n", file_out);
+        write(STDERR_FILENO, "Failed to create .out file %s\n", 29);
         close(fd_in);
         return 1;
     }
@@ -77,12 +79,12 @@ int manage_file(const char *file_path){
         case CMD_WRITE:
             num_pairs = parse_write(fd_in, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
             if (num_pairs == 0) {
-                dprintf(fd_out, "Invalid command. See HELP for usage\n");
+                write(fd_out, "Invalid command. See HELP for usage\n", 36);
                 continue;
             }
 
             if (kvs_write(num_pairs, keys, values)) {
-                dprintf(fd_out, "Failed to write pair\n");
+                write(fd_out, "Failed to write pair\n", 22);
             }
             break;
 
@@ -90,12 +92,12 @@ int manage_file(const char *file_path){
             num_pairs = parse_read_delete(fd_in, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
             if (num_pairs == 0) {
-                dprintf(fd_out, "Invalid command. See HELP for usage\n");
+                write(fd_out, "Invalid command. See HELP for usage\n", 36);
                 continue;
             }
 
             if (kvs_read(num_pairs, keys, fd_out)) {
-                dprintf(fd_out, "Failed to read pair\n");
+                write(fd_out, "Failed to read pair\n", 21);
             }
             break;
 
@@ -103,12 +105,12 @@ int manage_file(const char *file_path){
             num_pairs = parse_read_delete(fd_in, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
             if (num_pairs == 0) {
-                dprintf(fd_out, "Invalid command. See HELP for usage\n");
+                write(fd_out, "Invalid command. See HELP for usage\n", 36);
                 continue;
             }
 
             if (kvs_delete(num_pairs, keys, fd_out)) {
-                dprintf(fd_out, "Failed to delete pair\n");
+                write(fd_out, "Failed to delete pair\n", 23);
             }
             break;
 
@@ -118,28 +120,28 @@ int manage_file(const char *file_path){
 
         case CMD_WAIT:
             if (parse_wait(fd_in, &delay, NULL) == -1) {
-                dprintf(fd_out, "Invalid command. See HELP for usage\n");
+                write(fd_out, "Invalid command. See HELP for usage\n", 36);
                 continue;
             }
 
             if (delay > 0) {
-                dprintf(fd_out, "Waiting...\n");
+                write(fd_out, "Waiting...\n", 11);
                 kvs_wait(delay);
             }
             break;
 
         case CMD_BACKUP:
             if (kvs_backup()) {
-                dprintf(fd_out, "Failed to perform backup.\n");
+                write(fd_out, "Failed to perform backup.\n", 26);
             }
             break;
 
         case CMD_INVALID:
-            dprintf(fd_out, "Invalid command. See HELP for usage\n");
+            write(fd_out, "Invalid command. See HELP for usage\n", 36);
             break;
 
         case CMD_HELP:
-            dprintf(fd_out, 
+            write(fd_out, 
                 "Available commands:\n"
                 "  WRITE [(key,value),(key2,value2),...]\n"
                 "  READ [key,key2,...]\n"
@@ -147,8 +149,8 @@ int manage_file(const char *file_path){
                 "  SHOW\n"
                 "  WAIT <delay_ms>\n"
                 "  BACKUP\n" // Not implemented
-                "  HELP\n"
-            );
+                "  HELP\n", 
+                136);
             break;
 
         case CMD_EMPTY:
@@ -156,6 +158,8 @@ int manage_file(const char *file_path){
 
         case EOC:
             kvs_terminate();
+            close(fd_in);
+            close(fd_out);
             return 0;
     }
   }

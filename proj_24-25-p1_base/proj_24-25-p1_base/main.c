@@ -1,5 +1,5 @@
 #include <limits.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -12,9 +12,9 @@
 
 int main(int argc, char* argv[]) {
 
-    //REVER ISTO
+    /*  o write não funciona com %s     */
     if (argc != 2){
-        fprintf(stderr, "Usage: %s <dir_path> <backup_limit>\n", argv[0]);
+    //     write(STDERR_FILENO, "Usage: %s <dir_path> <backup_limit>\n", argv[0]);
         return 1;
     }
 

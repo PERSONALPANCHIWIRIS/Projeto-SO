@@ -1,10 +1,10 @@
 #include <dirent.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-//preciso destes?? oosso usar se quer??
+//preciso destes?? posso usar se quer??
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
