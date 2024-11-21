@@ -66,6 +66,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
     } else {
       dprintf(fd_out, "(%s,%s)", keys[i], result);
     }
+    free(result);
   }
   dprintf(fd_out, "]\n");
   return 0;
