@@ -12,10 +12,11 @@
 
 int main(int argc, char* argv[]) {
 
-    /*  o write não funciona com %s     */
     if (argc != 2){
-    //     write(STDERR_FILENO, "Usage: %s <dir_path> <backup_limit>\n", argv[0]);
-        return 1;
+      write(STDERR_FILENO, "Usage: ", 7); 
+      write(STDERR_FILENO, argv[0], strlen(argv[0]));
+      write(STDERR_FILENO, " <dir_path> <backup_limit>\n", 27);
+      return 1;
     }
 
     iterates_files(argv[1]);
