@@ -1,5 +1,7 @@
 #include "dirmanager.h"
 
+/*      MENSAGENS DE ERRO VÃO PARA O STDERR     */
+
 
 //Opens directory and iterates through the files
 void iterates_files(const char *dir_path) {
@@ -8,7 +10,8 @@ void iterates_files(const char *dir_path) {
     char filepath[MAX_JOB_FILE_NAME_SIZE];
 
     if ((dir = opendir(dir_path)) == NULL){
-        write(STDERR_FILENO, "Failed to open directory\n", 25);
+        //write(STDERR_FILENO, "Failed to open directory\n", 25);
+        fprintf(stderr, "Failed to open directory\n");
         return;
     }
 
@@ -16,7 +19,8 @@ void iterates_files(const char *dir_path) {
         if (strstr(entry->d_name, ".job") != NULL){
 
             if ((strlen(dir_path) + strlen(entry->d_name) + 1) > MAX_JOB_FILE_NAME_SIZE){
-               write(STDERR_FILENO, "File name too long\n", 20);
+               //write(STDERR_FILENO, "File name too long\n", 20);
+               fprintf(stderr, "File name too long\n");
                continue;
             }
 
@@ -39,14 +43,18 @@ int manage_file(const char *file_path){
     char file_out[MAX_JOB_FILE_NAME_SIZE];
 
     if (kvs_init()) {
-        write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
+        //write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
+        fprintf(stderr, "Failed to initialize KVS\n");
+
         return 1;
     }
 
     fd_in = open(file_path, O_RDONLY);
 
     if (fd_in == -1){
-        write(STDERR_FILENO, "Failed to open input file %s\n", 26);
+        //write(STDERR_FILENO, "Failed to open input file %s\n", 26);
+        fprintf(stderr, "Failed to open input file %s\n", file_path);
+
         //close(fd_in);
         return 1;
     }
@@ -61,7 +69,10 @@ int manage_file(const char *file_path){
     fd_out = open(file_out, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
     if (fd_out == -1){
-        write(STDERR_FILENO, "Failed to create .out file %s\n", 29);
+        //write(STDERR_FILENO, "Failed to create .out file %s\n", 29);
+        //fprintf(stderr, "Failed to create .out file %s\n", );
+        fprintf(stderr, "Failed to create .out file\n");
+
         close(fd_in);
         return 1;
     }
@@ -79,12 +90,14 @@ int manage_file(const char *file_path){
         case CMD_WRITE:
             num_pairs = parse_write(fd_in, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
             if (num_pairs == 0) {
-                write(fd_out, "Invalid command. See HELP for usage\n", 36);
+                //write(fd_out, "Invalid command. See HELP for usage\n", 36);
+                fprintf(stderr, "Invalid command. See HELP for usage\n");
                 continue;
             }
 
             if (kvs_write(num_pairs, keys, values)) {
-                write(fd_out, "Failed to write pair\n", 22);
+                //write(fd_out, "Failed to write pair\n", 22);
+                fprintf(stderr, "Failed to write pair\n");
             }
             break;
 
@@ -92,12 +105,14 @@ int manage_file(const char *file_path){
             num_pairs = parse_read_delete(fd_in, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
             if (num_pairs == 0) {
-                write(fd_out, "Invalid command. See HELP for usage\n", 36);
+                //write(fd_out, "Invalid command. See HELP for usage\n", 36);
+                fprintf(stderr, "Invalid command. See HELP for usage\n");
                 continue;
             }
 
             if (kvs_read(num_pairs, keys, fd_out)) {
-                write(fd_out, "Failed to read pair\n", 21);
+                //write(fd_out, "Failed to read pair\n", 21);
+                fprintf(stderr, "Failed to read pair\n");
             }
             break;
 
@@ -105,12 +120,14 @@ int manage_file(const char *file_path){
             num_pairs = parse_read_delete(fd_in, keys, MAX_WRITE_SIZE, MAX_STRING_SIZE);
 
             if (num_pairs == 0) {
-                write(fd_out, "Invalid command. See HELP for usage\n", 36);
+                //write(fd_out, "Invalid command. See HELP for usage\n", 36);
+                fprintf(stderr, "Invalid command. See HELP for usage\n");
                 continue;
             }
 
             if (kvs_delete(num_pairs, keys, fd_out)) {
-                write(fd_out, "Failed to delete pair\n", 23);
+                //write(fd_out, "Failed to delete pair\n", 23);
+                fprintf(stderr, "Failed to delete pair\n");
             }
             break;
 
@@ -120,7 +137,8 @@ int manage_file(const char *file_path){
 
         case CMD_WAIT:
             if (parse_wait(fd_in, &delay, NULL) == -1) {
-                write(fd_out, "Invalid command. See HELP for usage\n", 36);
+                //write(fd_out, "Invalid command. See HELP for usage\n", 36);
+                fprintf(stderr, "Invalid command. See HELP for usage\n");
                 continue;
             }
 
@@ -132,18 +150,20 @@ int manage_file(const char *file_path){
 
         case CMD_BACKUP:
             if (kvs_backup()) {
-                write(fd_out, "Failed to perform backup.\n", 26);
+                //write(fd_out, "Failed to perform backup.\n", 26);
+                fprintf(stderr, "Failed to perform backup.\n");
             }
             break;
 
         case CMD_INVALID:
-            write(fd_out, "Invalid command. See HELP for usage\n", 36);
+            //write(fd_out, "Invalid command. See HELP for usage\n", 36);
+            fprintf(stderr, "Invalid command. See HELP for usage\n");
             break;
 
         case CMD_HELP:
             write(fd_out, 
                 "Available commands:\n"
-                "  WRITE [(key,value),(key2,value2),...]\n"
+                "  WRITE [(key,value)(key2,value2),...]\n"
                 "  READ [key,key2,...]\n"
                 "  DELETE [key,key2,...]\n"
                 "  SHOW\n"

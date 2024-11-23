@@ -1,10 +1,10 @@
-(cinco, seis)
-(sete, oito)
-(tres, quatro)
-(um, dois)
+(cinco,seis)
+(sete,oito)
+(tres,quatro)
+(um,dois)
 [(um,dois)(cinco,seis)]
 Waiting...
 [(sete,KVSERROR)]
-(cinco, seis)
-(tres, quatro)
-(um, dois)
+(cinco,seis)
+(tres,quatro)
+(um,dois)
