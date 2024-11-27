@@ -199,10 +199,12 @@ void kvs_show(int fd_out) {
   }
 }
 
+//current_backup é definida como extern (global para todos os ficheiros) no header de operations
 int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
     pid_t pid = fork();//Cria o forke continua a executar o pai e o filho
     if (current_backup >= backup_limit) {
       wait(NULL);//espera que o processo filho termine
+      current_backup--;//acabou o backupcurrent_backup--;//acabou o backup
     }
     if (pid == 0) { // Processo filho
         char backup_file[MAX_JOB_FILE_NAME_SIZE];
@@ -210,16 +212,20 @@ int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
         char bck_num = string(backup_count);
         strncpy(backup_file, bck_num, strlen(bck_num));
         strncpy(backup_file, ".bck", 4); //Isto cria o nome do ficheiro de backup
+        backup_file[MAX_JOB_FILE_NAME_SIZE - 5] = '\0';
         int fd_backup = open(backup_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
         //cria o ficheiro de backup
         //kvs_show(fd_backup); //neste caso não sei o que vai no ficheiro de backup
         close(fd_backup);
-        current_backup--;//acabou o backup
         exit(0);//Chamada para fechar o processo filho
       } 
 
       else if (pid > 0) { // Processo pai
         current_backup++;//foi feito um backup
+        //O filho acabou, diminui o current_backup
+        if(waitpid(pid, NULL, 0) > 0){
+          current_backup--;
+        }
       }
       else { 
         fprintf(stderr, "Failed to fork for backup\n");
