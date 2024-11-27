@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 
+extern int current_backup;
+
 /// Initializes the KVS state.
 /// @return 0 if the KVS state was initialized successfully, 1 otherwise.
 int kvs_init();
@@ -38,7 +40,7 @@ void kvs_show(int fd_out);
 /// Creates a backup of the KVS state and stores it in the correspondent
 /// backup file
 /// @return 0 if the backup was successful, 1 otherwise.
-int kvs_backup();
+int kvs_backup(int backup_count, int backup_limit, const char *file_path);
 
 /// Waits for the last backup to be called.
 void kvs_wait_backup();

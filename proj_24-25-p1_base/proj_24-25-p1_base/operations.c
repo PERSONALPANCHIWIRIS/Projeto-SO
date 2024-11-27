@@ -4,10 +4,15 @@
 #include <time.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 
 #include "kvs.h"
 #include "constants.h"
+#include "operations.h"
 
 static struct HashTable* kvs_table = NULL;
 /*      O QUE ESTÁ NO STDERR FICA NO STDERR, O RESTO VAI PARA O FICHEIRO    */
@@ -194,9 +199,37 @@ void kvs_show(int fd_out) {
   }
 }
 
-int kvs_backup() {
-  return 0;
-}
+int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
+    pid_t pid = fork();//Cria o forke continua a executar o pai e o filho
+    while(current_backup >= backup_limit) {
+        wait(NULL);//espera que o processo filho termine
+        current_backup--;
+    }
+    if (pid == 0) { // Processo filho
+        char backup_file[MAX_JOB_FILE_NAME_SIZE];
+        strncpy(backup_file, file_path, MAX_JOB_FILE_NAME_SIZE-5);
+        char bck_num = string(backup_count);
+        strncpy(backup_file, bck_num, strlen(bck_num));
+        strncpy(backup_file, ".bck", 4); //Isto cria o nome do ficheiro de backup
+        int fd_backup = open(backup_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+        //cria o ficheiro de backup
+        //kvs_show(fd_backup); //neste caso não sei o que vai no ficheiro de backup
+        close(fd_backup);
+        exit(0);//Chamada para fechar o processo filho
+      } 
+
+      else if (pid > 0) { // Processo pai
+        current_backup++;//foi feito um backup
+      }
+      else { 
+        fprintf(stderr, "Failed to fork for backup\n");
+      }
+      return 0;
+  }
+  
+  
+  
+
 
 void kvs_wait(unsigned int delay_ms) {
   struct timespec delay = delay_to_timespec(delay_ms);

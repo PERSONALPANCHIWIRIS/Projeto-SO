@@ -12,14 +12,15 @@
 
 int main(int argc, char* argv[]) {
 
-    if (argc != 2){
+
+    if (argc != 3){
       write(STDERR_FILENO, "Usage: ", 7); 
       write(STDERR_FILENO, argv[0], strlen(argv[0]));
       write(STDERR_FILENO, " <dir_path> <backup_limit>\n", 27);
       return 1;
     }
-
-    iterates_files(argv[1]);
+    current_backup = 0;
+    iterates_files(argv[1], argv[2]);
 
     return 0;
 }

@@ -4,7 +4,7 @@
 
 
 //Opens directory and iterates through the files
-void iterates_files(const char *dir_path) {
+void iterates_files(const char *dir_path, int backup_limit) {
     DIR *dir;
     struct dirent *entry;
     char filepath[MAX_JOB_FILE_NAME_SIZE];
@@ -28,7 +28,8 @@ void iterates_files(const char *dir_path) {
             strcat(filepath, "/"); //concatenar
             strcat(filepath, entry->d_name);
 
-            manage_file(filepath);
+
+            manage_file(filepath, backup_limit);
         }
     }
 
@@ -38,9 +39,11 @@ void iterates_files(const char *dir_path) {
 
 
 //Processes each command in the file and creates the corresponding .out file
-int manage_file(const char *file_path){
+int manage_file(const char *file_path, int backup_limit) {
     int fd_in; int fd_out;
     char file_out[MAX_JOB_FILE_NAME_SIZE];
+    int backup_count = 0;
+    
 
     if (kvs_init()) {
         //write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
@@ -83,6 +86,7 @@ int manage_file(const char *file_path){
     char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
     unsigned int delay;
     size_t num_pairs;
+    int backup_count = 0;
 
     //fflush(stdout);
 
@@ -149,10 +153,12 @@ int manage_file(const char *file_path){
             break;
 
         case CMD_BACKUP:
-            if (kvs_backup()) {
-                //write(fd_out, "Failed to perform backup.\n", 26);
-                fprintf(stderr, "Failed to perform backup.\n");
+            backup_count++;
+            if (kvs_backup(backup_count, backup_limit, file_path)) {
+            //write(fd_out, "Failed to perform backup.\n", 26);
+            fprintf(stderr, "Failed to perform backup.\n");
             }
+            
             break;
 
         case CMD_INVALID:
