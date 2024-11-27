@@ -201,9 +201,8 @@ void kvs_show(int fd_out) {
 
 int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
     pid_t pid = fork();//Cria o forke continua a executar o pai e o filho
-    while(current_backup >= backup_limit) {
-        wait(NULL);//espera que o processo filho termine
-        current_backup--;
+    if (current_backup >= backup_limit) {
+      wait(NULL);//espera que o processo filho termine
     }
     if (pid == 0) { // Processo filho
         char backup_file[MAX_JOB_FILE_NAME_SIZE];
@@ -215,6 +214,7 @@ int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
         //cria o ficheiro de backup
         //kvs_show(fd_backup); //neste caso não sei o que vai no ficheiro de backup
         close(fd_backup);
+        current_backup--;//acabou o backup
         exit(0);//Chamada para fechar o processo filho
       } 
 
