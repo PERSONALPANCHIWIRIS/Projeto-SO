@@ -8,7 +8,7 @@
 #include "operations.h"
 #include "dirmanager.h"
 
-
+int current_backup = 0;
 
 int main(int argc, char* argv[]) {
 
@@ -19,8 +19,9 @@ int main(int argc, char* argv[]) {
       write(STDERR_FILENO, " <dir_path> <backup_limit>\n", 27);
       return 1;
     }
-    current_backup = 0;
-    iterates_files(argv[1], argv[2]);
+    
+    int backup_limit = atoi(argv[2]);
+    iterates_files(argv[1], backup_limit);
 
     return 0;
 }

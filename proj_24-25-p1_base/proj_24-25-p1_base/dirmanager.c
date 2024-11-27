@@ -1,4 +1,5 @@
 #include "dirmanager.h"
+#include "operations.h"
 
 /*      MENSAGENS DE ERRO VÃO PARA O STDERR     */
 
@@ -86,7 +87,6 @@ int manage_file(const char *file_path, int backup_limit) {
     char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
     unsigned int delay;
     size_t num_pairs;
-    int backup_count = 0;
 
     //fflush(stdout);
 
@@ -154,6 +154,7 @@ int manage_file(const char *file_path, int backup_limit) {
 
         case CMD_BACKUP:
             backup_count++;
+            current_backup++; 
             if (kvs_backup(backup_count, backup_limit, file_path)) {
             //write(fd_out, "Failed to perform backup.\n", 26);
             fprintf(stderr, "Failed to perform backup.\n");
