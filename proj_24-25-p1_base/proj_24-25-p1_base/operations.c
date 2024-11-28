@@ -217,7 +217,7 @@ int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
         backup_file[MAX_JOB_FILE_NAME_SIZE - 5] = '\0';
         int fd_backup = open(backup_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
         //cria o ficheiro de backup
-        //kvs_show(fd_backup); //neste caso não sei o que vai no ficheiro de backup
+        kvs_show(fd_backup); //neste caso não sei o que vai no ficheiro de backup
         close(fd_backup);
         current_backup--;
         exit(0);//Chamada para fechar o processo filho
