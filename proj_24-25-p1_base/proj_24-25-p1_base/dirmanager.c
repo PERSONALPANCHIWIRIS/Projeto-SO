@@ -16,6 +16,13 @@ void iterates_files(const char *dir_path, int backup_limit) {
         return;
     }
 
+    if (kvs_init()) {
+        write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
+        fprintf(stderr, "Failed to initialize KVS\n");
+
+        return 1;
+    }
+
     while ((entry = readdir(dir)) != NULL){
         if (strstr(entry->d_name, ".job") != NULL){
 
@@ -46,12 +53,12 @@ int manage_file(const char *file_path, int backup_limit) {
     int backup_count = 0;
     
 
-    if (kvs_init()) {
+    //if (kvs_init()) {
         //write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
-        fprintf(stderr, "Failed to initialize KVS\n");
+        //fprintf(stderr, "Failed to initialize KVS\n");
 
-        return 1;
-    }
+        //return 1;
+    //}
 
     fd_in = open(file_path, O_RDONLY);
 
@@ -184,7 +191,7 @@ int manage_file(const char *file_path, int backup_limit) {
             break;
 
         case EOC:
-            kvs_terminate();
+            //kvs_terminate();
             close(fd_in);
             close(fd_out);
             return 0;

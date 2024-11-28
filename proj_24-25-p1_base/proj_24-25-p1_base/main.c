@@ -22,6 +22,7 @@ int main(int argc, char* argv[]) {
     
     int backup_limit = atoi(argv[2]);
     iterates_files(argv[1], backup_limit);
+    kvs_terminate();
 
     return 0;
 }
