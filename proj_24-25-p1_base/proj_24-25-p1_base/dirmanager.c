@@ -20,7 +20,7 @@ void iterates_files(const char *dir_path, int backup_limit) {
         write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
         fprintf(stderr, "Failed to initialize KVS\n");
 
-        return 1;
+        return;
     }
 
     while ((entry = readdir(dir)) != NULL){

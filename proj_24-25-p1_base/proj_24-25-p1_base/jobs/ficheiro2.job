@@ -2,7 +2,9 @@
 WRITE [(um,dois)(tres,quatro)(cinco,seis)(sete,oito)]
 SHOW
 READ [um,cinco]
+BACKUP
 WAIT 1000
 DELETE [sete]
 READ [sete]
+BACKUP
 SHOW

@@ -209,15 +209,35 @@ int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
     
     if (pid == 0) { // Processo filho
         char backup_file[MAX_JOB_FILE_NAME_SIZE];
-        strncpy(backup_file, file_path, MAX_JOB_FILE_NAME_SIZE-5);
-        char bck_num[10];
-        sprintf(bck_num, "%d", backup_count);
-        strncpy(backup_file, bck_num, strlen(bck_num));
-        strncpy(backup_file, ".bck", 4); //Isto cria o nome do ficheiro de backup
+        strncpy(backup_file, file_path, MAX_JOB_FILE_NAME_SIZE - 5);
         backup_file[MAX_JOB_FILE_NAME_SIZE - 5] = '\0';
+        char *extension = strstr(backup_file, ".job");
+        if (extension != NULL) {
+          strcpy(extension, "\0");
+        }
+        char bck_num[10];
+        sprintf(bck_num, "-%d", backup_count);
+        strcat(backup_file, bck_num);
+        strcat(backup_file, ".bck"); //Isto cria o nome do ficheiro de backup
         int fd_backup = open(backup_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
         //cria o ficheiro de backup
-        kvs_show(fd_backup); //neste caso não sei o que vai no ficheiro de backup
+        //kvs_show(fd_backup); //neste caso não sei o que vai no ficheiro de backup
+
+        for (int i = 0; i < TABLE_SIZE; i++) {
+          KeyNode *keyNode = kvs_table->table[i];
+          while (keyNode != NULL) {
+              write(fd_backup, "(", 1);
+              write(fd_backup, keyNode->key, strlen(keyNode->key));
+              write(fd_backup, ",", 1);
+              write(fd_backup, keyNode->value, strlen(keyNode->value));
+              write(fd_backup, ")\n", 2);
+
+            //dprintf(fd_out, "(%s, %s)\n", keyNode->key, keyNode->value);
+            keyNode = keyNode->next; // Move to the next node
+          }
+        }
+
+
         close(fd_backup);
         current_backup--;
         exit(0);//Chamada para fechar o processo filho

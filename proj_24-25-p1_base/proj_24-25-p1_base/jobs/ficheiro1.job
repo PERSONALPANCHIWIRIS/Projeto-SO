@@ -5,5 +5,6 @@ DELETE [f]
 DELETE [c1]
 SHOW
 READ [fjje]
+BACKUP
 #comentário 
 HELP

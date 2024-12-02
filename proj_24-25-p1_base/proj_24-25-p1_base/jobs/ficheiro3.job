@@ -1,6 +1,9 @@
+BACKUP
 WRITE [(c1,v1)(BANANAS,bananas)(oeifjowef,hehe)(projetos,SO)(nove,catorze)]
 SHOW
+BACKUP
 DELETE [f,nove,haha]
 DELETE [c1]
+BACKUP
 SHOW
 READ [oeifjowef]

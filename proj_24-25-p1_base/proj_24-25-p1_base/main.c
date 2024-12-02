@@ -8,7 +8,7 @@
 #include "operations.h"
 #include "dirmanager.h"
 
-int current_backup = 0;
+ int current_backup = 0;
 
 int main(int argc, char* argv[]) {
 
