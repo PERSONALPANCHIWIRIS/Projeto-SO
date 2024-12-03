@@ -203,6 +203,7 @@ void kvs_show(int fd_out) {
 int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
     if (current_backup >= backup_limit) {
       wait(NULL);//espera que o processo filho termine
+      current_backup--;
     }
 
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho
@@ -239,11 +240,11 @@ int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
 
 
         close(fd_backup);
-        current_backup--;
         exit(0);//Chamada para fechar o processo filho
       } 
 
       else if (pid > 0) { // Processo pai
+        current_backup++;
         return 0; //nao tenho a certeza//a ideia é voltar ao dirmanager
       }
       else { 
