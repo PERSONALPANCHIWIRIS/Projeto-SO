@@ -201,9 +201,7 @@ void kvs_show(int fd_out) {
 
 //current_backup é definida como extern (global para todos os ficheiros) no header de operations
 int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
-    if (current_backup >= backup_limit) {
-      wait(NULL);//espera que o processo filho termine
-    }
+    
 
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho
     
@@ -239,7 +237,6 @@ int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
 
 
         close(fd_backup);
-        current_backup--;
         exit(0);//Chamada para fechar o processo filho
       } 
 
