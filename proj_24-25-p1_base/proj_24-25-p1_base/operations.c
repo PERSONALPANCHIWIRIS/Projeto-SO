@@ -201,14 +201,6 @@ void kvs_show(int fd_out) {
 
 //current_backup é definida como extern (global para todos os ficheiros) no header de operations
 int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
-<<<<<<< HEAD
-    if (current_backup >= backup_limit) {
-      wait(NULL);//espera que o processo filho termine
-      current_backup--;
-    }
-=======
-    
->>>>>>> refs/remotes/origin/main
 
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho
     
@@ -248,7 +240,6 @@ int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
       } 
 
       else if (pid > 0) { // Processo pai
-        current_backup++;
         return 0; //nao tenho a certeza//a ideia é voltar ao dirmanager
       }
       else { 
