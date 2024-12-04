@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #include "parser.h"
 #include "operations.h"

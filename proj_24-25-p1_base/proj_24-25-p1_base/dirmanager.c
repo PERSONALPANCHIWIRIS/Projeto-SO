@@ -38,6 +38,10 @@ void iterates_files(const char *dir_path, int backup_limit) {
 
 
             manage_file(filepath, backup_limit);
+            while(current_backup > 0){
+                wait(NULL);
+                current_backup--;
+            }
         }
     }
 
@@ -159,13 +163,17 @@ int manage_file(const char *file_path, int backup_limit) {
             }
             break;
 
-        case CMD_BACKUP:
-            backup_count++; 
-            if (kvs_backup(backup_count, backup_limit, file_path)) {
-            //write(fd_out, "Failed to perform backup.\n", 26);
-            fprintf(stderr, "Failed to perform backup.\n");
+        case CMD_BACKUP:  
+            if (current_backup >= backup_limit) {
+                wait(NULL);
+                current_backup--;
             }
-            
+            current_backup++;
+            backup_count++;
+            if (kvs_backup(backup_count, backup_limit, file_path)) {
+                //write(fd_out, "Failed to perform backup.\n", 26);
+                fprintf(stderr, "Failed to perform backup.\n");
+            }
             break;
 
         case CMD_INVALID:
