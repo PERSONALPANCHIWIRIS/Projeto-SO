@@ -141,7 +141,6 @@ int manage_file(const char *file_path, int backup_limit) {
             }
 
             if (kvs_delete(num_pairs, keys, fd_out)) {
-                //write(fd_out, "Failed to delete pair\n", 23);
                 fprintf(stderr, "Failed to delete pair\n");
             }
             break;
@@ -152,7 +151,6 @@ int manage_file(const char *file_path, int backup_limit) {
 
         case CMD_WAIT:
             if (parse_wait(fd_in, &delay, NULL) == -1) {
-                //write(fd_out, "Invalid command. See HELP for usage\n", 36);
                 fprintf(stderr, "Invalid command. See HELP for usage\n");
                 continue;
             }
@@ -163,6 +161,7 @@ int manage_file(const char *file_path, int backup_limit) {
             }
             break;
 
+<<<<<<< HEAD
         case CMD_BACKUP:  
             if (current_backup >= backup_limit) {
                 wait(NULL);
@@ -174,10 +173,30 @@ int manage_file(const char *file_path, int backup_limit) {
                 //write(fd_out, "Failed to perform backup.\n", 26);
                 fprintf(stderr, "Failed to perform backup.\n");
             }
+=======
+        case CMD_BACKUP:
+            backup_count++;
+            current_backup++; 
+            if (current_backup < backup_limit) {
+                if (kvs_backup(backup_count, backup_limit, file_path)) {
+                fprintf(stderr, "Failed to perform backup.\n");
+                }
+            }
+            else{
+                wait(NULL);
+                current_backup--;
+            }
+
+            while(current_backup > 0){
+                wait(NULL);
+                current_backup--;
+            }
+            
+            
+>>>>>>> refs/remotes/origin/main
             break;
 
         case CMD_INVALID:
-            //write(fd_out, "Invalid command. See HELP for usage\n", 36);
             fprintf(stderr, "Invalid command. See HELP for usage\n");
             break;
 
