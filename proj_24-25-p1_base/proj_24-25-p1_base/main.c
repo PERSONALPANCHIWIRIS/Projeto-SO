@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
     if (argc != 3){
       write(STDERR_FILENO, "Usage: ", 7); 
       write(STDERR_FILENO, argv[0], strlen(argv[0]));
-      write(STDERR_FILENO, " <dir_path> <backup_limit>\n", 27);
+      write(STDERR_FILENO, "<dir_path> <backup_limit> <threads_limit>\n", 41);
       return 1;
     }
     
