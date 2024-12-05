@@ -1,14 +1,15 @@
 #include "dirmanager.h"
 #include "operations.h"
-
+#include <pthread.h>
 /*      MENSAGENS DE ERRO VÃO PARA O STDERR     */
 
 
 //Opens directory and iterates through the files
-void iterates_files(const char *dir_path, int backup_limit) {
+void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
     DIR *dir;
     struct dirent *entry;
     char filepath[MAX_JOB_FILE_NAME_SIZE];
+    pthread_t threads[max_threads];
 
     if ((dir = opendir(dir_path)) == NULL){
         //write(STDERR_FILENO, "Failed to open directory\n", 25);
@@ -24,25 +25,33 @@ void iterates_files(const char *dir_path, int backup_limit) {
     }
 
     while ((entry = readdir(dir)) != NULL){
-        if (strstr(entry->d_name, ".job") != NULL){
+            if (strstr(entry->d_name, ".job") != NULL){
+                if ((strlen(dir_path) + strlen(entry->d_name) + 1) > MAX_JOB_FILE_NAME_SIZE){
+                    //write(STDERR_FILENO, "File name too long\n", 20);
+                    fprintf(stderr, "File name too long\n");
+                    break;
+                }
+                while (current_threads >= max_threads){
+                    pthread_join(threads[max_threads - current_threads], NULL);//Supostamente irá chamar a thread mais antiga
+                    current_threads--; //current_threads não é suposto ser maior que max_threads
+                }
 
-            if ((strlen(dir_path) + strlen(entry->d_name) + 1) > MAX_JOB_FILE_NAME_SIZE){
-               //write(STDERR_FILENO, "File name too long\n", 20);
-               fprintf(stderr, "File name too long\n");
-               continue;
+                strcpy(filepath, dir_path);
+                strcat(filepath, "/"); //concatenar
+                strcat(filepath, entry->d_name);
+
+                
+                if(pthread_create(&threads[current_threads], NULL, manage_file, (void *) filepath) != 0){
+                    fprintf(stderr, "Failed to create thread\n");
+                    continue;
+                }
+                current_threads++;
+                //manage_file(filepath, backup_limit);
             }
-
-            strcpy(filepath, dir_path);
-            strcat(filepath, "/"); //concatenar
-            strcat(filepath, entry->d_name);
-
-
-            manage_file(filepath, backup_limit);
-            while(current_backup > 0){
-                wait(NULL);
-                current_backup--;
-            }
-        }
+            
+    }
+    for (int i = 0; i < current_threads; i++){
+        pthread_join(threads[i], NULL);
     }
 
     closedir(dir);
@@ -199,6 +208,7 @@ int manage_file(const char *file_path, int backup_limit) {
             //kvs_terminate();
             close(fd_in);
             close(fd_out);
+            current_threads--;
             return 0;
     }
   }

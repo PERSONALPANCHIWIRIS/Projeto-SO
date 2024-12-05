@@ -9,6 +9,7 @@
 #include "dirmanager.h"
 
  int current_backup = 0;
+ int current_threads = 0;
 
 int main(int argc, char* argv[]) {
 
@@ -21,7 +22,12 @@ int main(int argc, char* argv[]) {
     }
     
     int backup_limit = atoi(argv[2]);
-    iterates_files(argv[1], backup_limit);
+    int max_threads = atoi(argv[3]);
+    iterates_files(argv[1], backup_limit, max_threads);
+    while(current_backup > 0){
+      wait(NULL);
+      current_backup--;
+    }
     kvs_terminate();
 
     return 0;

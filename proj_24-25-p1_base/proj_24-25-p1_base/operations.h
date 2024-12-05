@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 extern int current_backup;
+extern int current_threads;
 
 /// Initializes the KVS state.
 /// @return 0 if the KVS state was initialized successfully, 1 otherwise.
