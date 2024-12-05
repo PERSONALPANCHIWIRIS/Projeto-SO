@@ -203,19 +203,21 @@ void kvs_show(int fd_out) {
 int kvs_backup(int backup_count, int backup_limit, const char *file_path) {
 
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho
+
+    char backup_file[MAX_JOB_FILE_NAME_SIZE];
+    strncpy(backup_file, file_path, MAX_JOB_FILE_NAME_SIZE - 5);
+    backup_file[MAX_JOB_FILE_NAME_SIZE - 5] = '\0';
+    char *extension = strstr(backup_file, ".job");
+    if (extension != NULL) {
+      strcpy(extension, "\0");
+    }
+    char bck_num[10];
+    sprintf(bck_num, "-%d", backup_count);
+    strcat(backup_file, bck_num);
+    strcat(backup_file, ".bck"); //Isto cria o nome do ficheiro de backup
     
     if (pid == 0) { // Processo filho
-        char backup_file[MAX_JOB_FILE_NAME_SIZE];
-        strncpy(backup_file, file_path, MAX_JOB_FILE_NAME_SIZE - 5);
-        backup_file[MAX_JOB_FILE_NAME_SIZE - 5] = '\0';
-        char *extension = strstr(backup_file, ".job");
-        if (extension != NULL) {
-          strcpy(extension, "\0");
-        }
-        char bck_num[10];
-        sprintf(bck_num, "-%d", backup_count);
-        strcat(backup_file, bck_num);
-        strcat(backup_file, ".bck"); //Isto cria o nome do ficheiro de backup
+        
         int fd_backup = open(backup_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
         //cria o ficheiro de backup
         //kvs_show(fd_backup); //neste caso não sei o que vai no ficheiro de backup
