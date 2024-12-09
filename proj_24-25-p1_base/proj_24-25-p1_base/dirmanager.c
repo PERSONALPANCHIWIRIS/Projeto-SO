@@ -54,14 +54,17 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
                     continue;
                 }
                 current_threads++;
+
                 //manage_file(filepath, backup_limit);
             }
             
     }
+    
     for (int i = 0; i < current_threads; i++){
         pthread_join(threads[i], NULL);
     }
 
+    
     closedir(dir);
     return;
 }
@@ -215,6 +218,7 @@ void *manage_file(void *arg) {
 
         case EOC:
             //kvs_terminate();
+            //free(file_info->file_path);
             free(file_info);
             close(fd_in);
             close(fd_out);
