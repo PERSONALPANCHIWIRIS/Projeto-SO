@@ -175,12 +175,11 @@ int manage_file(const char *file_path, int backup_limit) {
                 wait(NULL);
                 current_backup--;
             }
-            current_backup++;
-            backup_count++;
             if (kvs_backup(backup_count, file_path)) {
                 //write(fd_out, "Failed to perform backup.\n", 26);
                 fprintf(stderr, "Failed to perform backup.\n");
             }
+            backup_count++; //muda na função "global"
 
             break;
 

@@ -201,6 +201,8 @@ void kvs_show(int fd_out) {
 
 //current_backup é definida como extern (global para todos os ficheiros) no header de operations
 int kvs_backup(int backup_count, const char *file_path) {
+    current_backup++;
+    backup_count++; //muda aqui para o ficheiro, localmente
 
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho
 
