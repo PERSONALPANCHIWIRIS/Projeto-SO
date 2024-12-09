@@ -4,6 +4,11 @@
 /*      MENSAGENS DE ERRO VÃO PARA O STDERR     */
 
 
+struct file_info {
+    char file_path[MAX_JOB_FILE_NAME_SIZE];
+    int backup_limit;
+};
+
 //Opens directory and iterates through the files
 void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
     DIR *dir;
@@ -40,8 +45,11 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
                 strcat(filepath, "/"); //concatenar
                 strcat(filepath, entry->d_name);
 
+                struct file_info *file_info = malloc(sizeof(struct file_info));
+                strcpy(file_info->file_path, filepath);
+                file_info->backup_limit = backup_limit;
                 
-                if(pthread_create(&threads[current_threads], NULL, manage_file, (void *) filepath) != 0){
+                if(pthread_create(&threads[current_threads], NULL, manage_file, (void *) file_info) != 0){
                     fprintf(stderr, "Failed to create thread\n");
                     continue;
                 }
@@ -60,7 +68,9 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
 
 
 //Processes each command in the file and creates the corresponding .out file
-int manage_file(const char *file_path, int backup_limit) {
+void *manage_file(void *arg) {
+    struct file_info *file_info = (struct file_info *)arg;
+    //Da cast de file_info ao argumento void recebido
     int fd_in; int fd_out;
     char file_out[MAX_JOB_FILE_NAME_SIZE];
     int backup_count = 0;
@@ -73,17 +83,17 @@ int manage_file(const char *file_path, int backup_limit) {
         //return 1;
     //}
 
-    fd_in = open(file_path, O_RDONLY);
+    fd_in = open(file_info->file_path, O_RDONLY);
 
     if (fd_in == -1){
         //write(STDERR_FILENO, "Failed to open input file %s\n", 26);
-        fprintf(stderr, "Failed to open input file %s\n", file_path);
+        fprintf(stderr, "Failed to open input file %s\n", file_info->file_path);
 
         //close(fd_in);
-        return 1;
+        return NULL;
     }
 
-    strncpy(file_out, file_path, MAX_JOB_FILE_NAME_SIZE-1);
+    strncpy(file_out, file_info->file_path, MAX_JOB_FILE_NAME_SIZE-1);
     file_out[MAX_JOB_FILE_NAME_SIZE-1] = '\0';
     char *extension = strstr(file_out, ".job");
     if (extension != NULL) {
@@ -98,7 +108,7 @@ int manage_file(const char *file_path, int backup_limit) {
         fprintf(stderr, "Failed to create .out file\n");
 
         close(fd_in);
-        return 1;
+        return NULL;
     }
 
 
@@ -171,11 +181,11 @@ int manage_file(const char *file_path, int backup_limit) {
             break;
 
         case CMD_BACKUP:  
-            if (current_backup >= backup_limit) {
+            if (current_backup >= file_info->backup_limit) {
                 wait(NULL);
                 current_backup--;
             }
-            if (kvs_backup(backup_count, file_path)) {
+            if (kvs_backup(backup_count, file_info->file_path)) {
                 //write(fd_out, "Failed to perform backup.\n", 26);
                 fprintf(stderr, "Failed to perform backup.\n");
             }
@@ -205,10 +215,11 @@ int manage_file(const char *file_path, int backup_limit) {
 
         case EOC:
             //kvs_terminate();
+            free(file_info);
             close(fd_in);
             close(fd_out);
             current_threads--;
-            return 0;
+            return NULL;
     }
   }
 }
