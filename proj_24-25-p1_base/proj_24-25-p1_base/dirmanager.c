@@ -3,6 +3,7 @@
 #include <pthread.h>
 /*      MENSAGENS DE ERRO VÃO PARA O STDERR     */
 
+pthread_mutex_t global_lock = PTHREAD_MUTEX_INITIALIZER;
 
 struct file_info {
     char file_path[MAX_JOB_FILE_NAME_SIZE];
@@ -15,6 +16,12 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
     struct dirent *entry;
     char filepath[MAX_JOB_FILE_NAME_SIZE];
     pthread_t threads[max_threads];
+    
+    //Inicializa o mutex para os locks
+    //if (pthread_mutex_init(&global_lock, NULL) != 0) {
+        //fprintf(stderr, "Failed to initialize global mutex\n");
+        //return;
+    //}
 
     if ((dir = opendir(dir_path)) == NULL){
         //write(STDERR_FILENO, "Failed to open directory\n", 25);
@@ -30,33 +37,39 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
     }
 
     while ((entry = readdir(dir)) != NULL){
-            if (strstr(entry->d_name, ".job") != NULL){
-                if ((strlen(dir_path) + strlen(entry->d_name) + 1) > MAX_JOB_FILE_NAME_SIZE){
-                    //write(STDERR_FILENO, "File name too long\n", 20);
-                    fprintf(stderr, "File name too long\n");
-                    break;
-                }
-                while (current_threads >= max_threads){
-                    pthread_join(threads[max_threads - current_threads], NULL);//Supostamente irá chamar a thread mais antiga
-                    current_threads--; //current_threads não é suposto ser maior que max_threads
-                }
-
-                strcpy(filepath, dir_path);
-                strcat(filepath, "/"); //concatenar
-                strcat(filepath, entry->d_name);
-
-                struct file_info *file_info = malloc(sizeof(struct file_info));
-                strcpy(file_info->file_path, filepath);
-                file_info->backup_limit = backup_limit;
-                
-                if(pthread_create(&threads[current_threads], NULL, manage_file, (void *) file_info) != 0){
-                    fprintf(stderr, "Failed to create thread\n");
-                    continue;
-                }
-                current_threads++;
-
-                //manage_file(filepath, backup_limit);
+        if (strstr(entry->d_name, ".job") != NULL){
+            if ((strlen(dir_path) + strlen(entry->d_name) + 1) > MAX_JOB_FILE_NAME_SIZE){
+                //write(STDERR_FILENO, "File name too long\n", 20);
+                fprintf(stderr, "File name too long\n");
+                break;
             }
+            
+            pthread_mutex_lock(&global_lock);
+            while (current_threads >= max_threads){
+                pthread_join(threads[max_threads - current_threads], NULL);//Supostamente irá chamar a thread mais antiga
+                current_threads--; //current_threads não é suposto ser maior que max_threads
+                
+            }
+            pthread_mutex_unlock(&global_lock);
+
+            strcpy(filepath, dir_path);
+            strcat(filepath, "/"); //concatenar
+            strcat(filepath, entry->d_name);
+
+            struct file_info *file_info = malloc(sizeof(struct file_info));
+            strcpy(file_info->file_path, filepath);
+            file_info->backup_limit = backup_limit;
+            
+            if(pthread_create(&threads[current_threads], NULL, manage_file, (void *) file_info) != 0){
+                fprintf(stderr, "Failed to create thread\n");
+                continue;
+            }
+            pthread_mutex_lock(&global_lock);
+            current_threads++;
+            pthread_mutex_unlock(&global_lock);
+
+            //manage_file(filepath, backup_limit);
+        }
             
     }
     
@@ -77,6 +90,7 @@ void *manage_file(void *arg) {
     int fd_in; int fd_out;
     char file_out[MAX_JOB_FILE_NAME_SIZE];
     int backup_count = 0;
+    
     
 
     //if (kvs_init()) {
@@ -184,10 +198,12 @@ void *manage_file(void *arg) {
             break;
 
         case CMD_BACKUP:  
+            pthread_mutex_lock(&global_lock);
             if (current_backup >= file_info->backup_limit) {
                 wait(NULL);
                 current_backup--;
             }
+            pthread_mutex_unlock(&global_lock);
             if (kvs_backup(backup_count, file_info->file_path)) {
                 //write(fd_out, "Failed to perform backup.\n", 26);
                 fprintf(stderr, "Failed to perform backup.\n");
@@ -222,7 +238,9 @@ void *manage_file(void *arg) {
             free(file_info);
             close(fd_in);
             close(fd_out);
+            pthread_mutex_lock(&global_lock);
             current_threads--;
+            pthread_mutex_unlock(&global_lock);
             return NULL;
     }
   }

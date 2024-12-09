@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <pthread.h>
 
 
 #include "kvs.h"
@@ -24,6 +25,8 @@ static struct HashTable* kvs_table = NULL;
 static struct timespec delay_to_timespec(unsigned int delay_ms) {
   return (struct timespec){delay_ms / 1000, (delay_ms % 1000) * 1000000};
 }
+
+pthread_mutex_t kvs_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int kvs_init() {
   if (kvs_table != NULL) {
@@ -52,11 +55,13 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
     return 1;
   }
 
+  pthread_mutex_lock(&kvs_lock);
   for (size_t i = 0; i < num_pairs; i++) {
     if (write_pair(kvs_table, keys[i], values[i]) != 0) {
       fprintf(stderr, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
     }
   }
+  pthread_mutex_unlock(&kvs_lock);
 
   return 0;
 }
@@ -92,6 +97,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
     return 1;
   }
 
+  pthread_mutex_lock(&kvs_lock);
   //printf("[");
   write(fd_out, "[", 1);
   /*
@@ -121,6 +127,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
 
   //printf("]\n");
   write(fd_out, "]\n", 2);
+  pthread_mutex_unlock(&kvs_lock);
   return 0;
 }
 
@@ -133,6 +140,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   }
   int aux = 0;
 
+  pthread_mutex_lock(&kvs_lock);
   for (size_t i = 0; i < num_pairs; i++) {
     if (delete_pair(kvs_table, keys[i]) != 0) {
       if (!aux) {
@@ -148,6 +156,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   if (aux) {
     write(fd_out, "]\n", 2);
   }
+  pthread_mutex_unlock(&kvs_lock);
 
   return 0;
 }
@@ -201,7 +210,9 @@ void kvs_show(int fd_out) {
 
 //current_backup é definida como extern (global para todos os ficheiros) no header de operations
 int kvs_backup(int backup_count, const char *file_path) {
+    pthread_mutex_lock(&kvs_lock);
     current_backup++;
+    pthread_mutex_unlock(&kvs_lock);
     backup_count++; //muda aqui para o ficheiro, localmente
 
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho
