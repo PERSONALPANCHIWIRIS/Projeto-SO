@@ -198,7 +198,7 @@ void kvs_show(int fd_out) {
     while (keyNode != NULL) {
         write(fd_out, "(", 1);
         write(fd_out, keyNode->key, strlen(keyNode->key));
-        write(fd_out, ",", 1);
+        write(fd_out, ", ", 2);
         write(fd_out, keyNode->value, strlen(keyNode->value));
         write(fd_out, ")\n", 2);
 
