@@ -44,13 +44,25 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
                 break;
             }
             
-            pthread_mutex_lock(&global_lock);
-            while (current_threads >= max_threads){
-                pthread_join(threads[max_threads - current_threads], NULL);//Supostamente irá chamar a thread mais antiga
-                current_threads--; //current_threads não é suposto ser maior que max_threads
-                
+            while (1) { //Verificação do número de threads e se o limite não foi atingido
+                pthread_mutex_lock(&global_lock);
+                fprintf(stderr, "Current threads: %d\n", current_threads);
+                if (current_threads < max_threads) {
+                    pthread_mutex_unlock(&global_lock);
+                    break; // Sai do while caso dê para criar thread
+                }
+                fprintf(stderr, "Unlocked\n");
+                pthread_mutex_unlock(&global_lock);
+
+                // Espera pela priemira thread criada
+                fprintf(stderr, "Waiting to join thread\n");
+                pthread_join(threads[max_threads - current_threads], NULL);
+                fprintf(stderr, "Thread joined\n");
+                pthread_mutex_lock(&global_lock);
+                current_threads--;
+                pthread_mutex_unlock(&global_lock);
             }
-            pthread_mutex_unlock(&global_lock);
+            
 
             strcpy(filepath, dir_path);
             strcat(filepath, "/"); //concatenar
@@ -64,6 +76,7 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
                 fprintf(stderr, "Failed to create thread\n");
                 continue;
             }
+
             pthread_mutex_lock(&global_lock);
             current_threads++;
             pthread_mutex_unlock(&global_lock);
@@ -199,9 +212,11 @@ void *manage_file(void *arg) {
 
         case CMD_BACKUP:  
             pthread_mutex_lock(&global_lock);
-            if (current_backup >= file_info->backup_limit) {
+            while (current_backup >= file_info->backup_limit) {
+                pthread_mutex_unlock(&global_lock);
                 wait(NULL);
-                current_backup--;
+                pthread_mutex_lock(&global_lock);
+                current_backup--;               
             }
             pthread_mutex_unlock(&global_lock);
             if (kvs_backup(backup_count, file_info->file_path)) {
