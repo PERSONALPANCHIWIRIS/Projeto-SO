@@ -46,18 +46,14 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
             
             while (1) { //Verificação do número de threads e se o limite não foi atingido
                 pthread_mutex_lock(&global_lock);
-                fprintf(stderr, "Current threads: %d\n", current_threads);
                 if (current_threads < max_threads) {
                     pthread_mutex_unlock(&global_lock);
                     break; // Sai do while caso dê para criar thread
                 }
-                fprintf(stderr, "Unlocked\n");
                 pthread_mutex_unlock(&global_lock);
 
                 // Espera pela priemira thread criada
-                fprintf(stderr, "Waiting to join thread\n");
                 pthread_join(threads[max_threads - current_threads], NULL);
-                fprintf(stderr, "Thread joined\n");
                 pthread_mutex_lock(&global_lock);
                 current_threads--;
                 pthread_mutex_unlock(&global_lock);
