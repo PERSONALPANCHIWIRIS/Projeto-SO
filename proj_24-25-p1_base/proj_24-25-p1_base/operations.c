@@ -56,6 +56,8 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
   }
 
   pthread_mutex_lock(&kvs_lock);
+
+
   for (size_t i = 0; i < num_pairs; i++) {
     if (write_pair(kvs_table, keys[i], values[i]) != 0) {
       fprintf(stderr, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
@@ -98,35 +100,35 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   }
 
   pthread_mutex_lock(&kvs_lock);
-  //printf("[");
-  write(fd_out, "[", 1);
-  /*
-  for (size_t i = 0; i < num_pairs; i++) {
-    char* result = read_pair(kvs_table, keys[i]);
-    if (result == NULL) {
-      printf("(%s,KVSERROR)", keys[i]);
-    } else {
-      printf("(%s,%s)", keys[i], result);
+
+  // alfabeticamente para o .out
+  for (size_t i = 0; i < num_pairs - 1; i++) {
+    for (size_t j = i + 1; j < num_pairs; j++) {
+      if (strcmp(keys[i], keys[j]) > 0) {
+        char temp[MAX_STRING_SIZE];
+        strcpy(temp, keys[i]);
+        strcpy(keys[i], keys[j]);
+        strcpy(keys[j], temp);
+      }
     }
+  }
+
+  write(fd_out, "[", 1);
+  for (size_t i = 0; i < num_pairs; i++) {
+    char *result = read_pair(kvs_table, keys[i]);
+    write(fd_out, "(", 1);
+    write(fd_out, keys[i], strlen(keys[i]));
+    if (result == NULL) {
+      write(fd_out, ",KVSERROR", 9);
+    } else {
+      write(fd_out, ",", 1);
+      write(fd_out, result, strlen(result));
+    }
+    write(fd_out, ")", 1);
     free(result);
   }
-  */
-    for (size_t i = 0; i < num_pairs; i++) {
-        char *result = read_pair(kvs_table, keys[i]);
-        write(fd_out, "(", 1);
-        write(fd_out, keys[i], strlen(keys[i]));
-        if (result == NULL) {
-            write(fd_out, ",KVSERROR", 9);
-        } else {
-            write(fd_out, ",", 1);
-            write(fd_out, result, strlen(result));
-        }
-        write(fd_out, ")", 1);
-        free(result);
-    }
-
-  //printf("]\n");
   write(fd_out, "]\n", 2);
+
   pthread_mutex_unlock(&kvs_lock);
   return 0;
 }
@@ -141,6 +143,19 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   int aux = 0;
 
   pthread_mutex_lock(&kvs_lock);
+
+  // alfabeticamente para o .out
+  //for (size_t i = 0; i < num_pairs - 1; i++) {
+    //for (size_t j = i + 1; j < num_pairs; j++) {
+      //if (strcmp(keys[i], keys[j]) > 0) {
+        //char temp[MAX_STRING_SIZE];
+        //strcpy(temp, keys[i]);
+        //strcpy(keys[i], keys[j]);
+        //strcpy(keys[j], temp);
+      //}
+    //}
+  //}
+
   for (size_t i = 0; i < num_pairs; i++) {
     if (delete_pair(kvs_table, keys[i]) != 0) {
       if (!aux) {
@@ -240,7 +255,7 @@ int kvs_backup(int backup_count, const char *file_path) {
           while (keyNode != NULL) {
               write(fd_backup, "(", 1);
               write(fd_backup, keyNode->key, strlen(keyNode->key));
-              write(fd_backup, ",", 1);
+              write(fd_backup, ", ", 2);
               write(fd_backup, keyNode->value, strlen(keyNode->value));
               write(fd_backup, ")\n", 2);
 
