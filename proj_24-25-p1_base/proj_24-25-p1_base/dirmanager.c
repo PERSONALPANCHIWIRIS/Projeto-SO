@@ -38,6 +38,7 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
 
     while ((entry = readdir(dir)) != NULL){
         if (strstr(entry->d_name, ".job") != NULL){
+            //Verificação do nome
             if ((strlen(dir_path) + strlen(entry->d_name) + 1) > MAX_JOB_FILE_NAME_SIZE){
                 //write(STDERR_FILENO, "File name too long\n", 20);
                 fprintf(stderr, "File name too long\n");
@@ -52,18 +53,19 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
                 }
                 pthread_mutex_unlock(&global_lock);
 
-                // Espera pela priemira thread criada
+                // Espera pela primeira thread criada
                 pthread_join(threads[max_threads - current_threads], NULL);
                 pthread_mutex_lock(&global_lock);
                 current_threads--;
                 pthread_mutex_unlock(&global_lock);
             }
             
-
+            //Constroi o nome do ficheiro
             strcpy(filepath, dir_path);
             strcat(filepath, "/"); //concatenar
             strcat(filepath, entry->d_name);
 
+            //estrutura para manage_file tratar
             struct file_info *file_info = malloc(sizeof(struct file_info));
             strcpy(file_info->file_path, filepath);
             file_info->backup_limit = backup_limit;
