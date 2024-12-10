@@ -30,7 +30,7 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
     }
 
     if (kvs_init()) {
-        write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
+        //write(STDERR_FILENO, "Failed to initialize KVS\n", 26);
         fprintf(stderr, "Failed to initialize KVS\n");
 
         return;
@@ -45,20 +45,15 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
                 break;
             }
             
-            while (1) { //Verificação do número de threads e se o limite não foi atingido
-                pthread_mutex_lock(&global_lock);
-                if (current_threads < max_threads) {
-                    pthread_mutex_unlock(&global_lock);
-                    break; // Sai do while caso dê para criar thread
-                }
+            pthread_mutex_lock(&global_lock);
+            while (current_threads >= max_threads) { //Verificação do número de threads e se o limite não foi atingido
                 pthread_mutex_unlock(&global_lock);
-
                 // Espera pela primeira thread criada
                 pthread_join(threads[max_threads - current_threads], NULL);
                 pthread_mutex_lock(&global_lock);
                 current_threads--;
-                pthread_mutex_unlock(&global_lock);
             }
+            pthread_mutex_unlock(&global_lock);
             
             //Constroi o nome do ficheiro
             strcpy(filepath, dir_path);
@@ -70,7 +65,8 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
             strcpy(file_info->file_path, filepath);
             file_info->backup_limit = backup_limit;
             
-            if(pthread_create(&threads[current_threads], NULL, manage_file, (void *) file_info) != 0){
+            
+            if(current_threads >= 0 && pthread_create(&threads[current_threads], NULL, manage_file, (void *) file_info) != 0){
                 fprintf(stderr, "Failed to create thread\n");
                 continue;
             }

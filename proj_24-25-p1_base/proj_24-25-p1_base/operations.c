@@ -208,6 +208,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
 
 
 void kvs_show(int fd_out) {
+  pthread_mutex_lock(&kvs_lock);
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *keyNode = kvs_table->table[i];
     while (keyNode != NULL) {
@@ -221,6 +222,7 @@ void kvs_show(int fd_out) {
       keyNode = keyNode->next; // Move to the next node
     }
   }
+  pthread_mutex_unlock(&kvs_lock);
 }
 
 //current_backup é definida como extern (global para todos os ficheiros) no header de operations
