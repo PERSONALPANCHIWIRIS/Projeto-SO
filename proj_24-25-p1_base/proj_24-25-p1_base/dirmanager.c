@@ -5,10 +5,7 @@
 
 pthread_mutex_t global_lock = PTHREAD_MUTEX_INITIALIZER;
 
-struct file_info {
-    char file_path[MAX_JOB_FILE_NAME_SIZE];
-    int backup_limit;
-};
+
 
 //Opens directory and iterates through the files
 void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
@@ -51,7 +48,6 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
                 // Espera pela primeira thread criada
                 pthread_join(threads[max_threads - current_threads], NULL);
                 pthread_mutex_lock(&global_lock);
-                current_threads--;
             }
             pthread_mutex_unlock(&global_lock);
             
@@ -66,7 +62,7 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
             file_info->backup_limit = backup_limit;
             
             
-            if(current_threads >= 0 && pthread_create(&threads[current_threads], NULL, manage_file, (void *) file_info) != 0){
+            if(pthread_create(&threads[current_threads], NULL, manage_file, (void *) file_info) != 0){
                 fprintf(stderr, "Failed to create thread\n");
                 continue;
             }
@@ -213,7 +209,7 @@ void *manage_file(void *arg) {
                 current_backup--;               
             }
             pthread_mutex_unlock(&global_lock);
-            if (kvs_backup(backup_count, file_info->file_path)) {
+            if (kvs_backup(backup_count, file_info)) {
                 //write(fd_out, "Failed to perform backup.\n", 26);
                 fprintf(stderr, "Failed to perform backup.\n");
             }

@@ -226,7 +226,7 @@ void kvs_show(int fd_out) {
 }
 
 //current_backup é definida como extern (global para todos os ficheiros) no header de operations
-int kvs_backup(int backup_count, const char *file_path) {
+int kvs_backup(int backup_count, struct file_info *file_info) {
     pthread_mutex_lock(&kvs_lock);
     current_backup++;
     pthread_mutex_unlock(&kvs_lock);
@@ -235,7 +235,7 @@ int kvs_backup(int backup_count, const char *file_path) {
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho
 
     char backup_file[MAX_JOB_FILE_NAME_SIZE];
-    strncpy(backup_file, file_path, MAX_JOB_FILE_NAME_SIZE - 5);
+    strncpy(backup_file, file_info->file_path, MAX_JOB_FILE_NAME_SIZE - 5);
     backup_file[MAX_JOB_FILE_NAME_SIZE - 5] = '\0';
     char *extension = strstr(backup_file, ".job");
     if (extension != NULL) {
@@ -268,6 +268,7 @@ int kvs_backup(int backup_count, const char *file_path) {
 
 
         close(fd_backup);
+        free(file_info);
         exit(0);//Chamada para fechar o processo filho
       } 
 
