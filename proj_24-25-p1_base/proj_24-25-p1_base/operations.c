@@ -15,6 +15,8 @@
 #include "constants.h"
 #include "operations.h"
 
+pthread_mutex_t operations_lock = PTHREAD_MUTEX_INITIALIZER;
+
 static struct HashTable* kvs_table = NULL;
 /*      O QUE ESTÁ NO STDERR FICA NO STDERR, O RESTO VAI PARA O FICHEIRO    */
 
@@ -25,8 +27,6 @@ static struct HashTable* kvs_table = NULL;
 static struct timespec delay_to_timespec(unsigned int delay_ms) {
   return (struct timespec){delay_ms / 1000, (delay_ms % 1000) * 1000000};
 }
-
-pthread_mutex_t kvs_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int kvs_init() {
   if (kvs_table != NULL) {
@@ -55,7 +55,7 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
     return 1;
   }
 
-  pthread_mutex_lock(&kvs_lock);
+  //pthread_mutex_lock(&kvs_lock);
 
 
   for (size_t i = 0; i < num_pairs; i++) {
@@ -63,7 +63,7 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
       fprintf(stderr, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
     }
   }
-  pthread_mutex_unlock(&kvs_lock);
+  //pthread_mutex_unlock(&kvs_lock);
 
   return 0;
 }
@@ -99,7 +99,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
     return 1;
   }
 
-  pthread_mutex_lock(&kvs_lock);
+  //pthread_mutex_lock(&kvs_lock);
 
   // alfabeticamente para o .out
   for (size_t i = 0; i < num_pairs - 1; i++) {
@@ -129,7 +129,7 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   }
   write(fd_out, "]\n", 2);
 
-  pthread_mutex_unlock(&kvs_lock);
+  //pthread_mutex_unlock(&kvs_lock);
   return 0;
 }
 
@@ -142,7 +142,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   }
   int aux = 0;
 
-  pthread_mutex_lock(&kvs_lock);
+  //pthread_mutex_lock(&kvs_lock);
 
   // alfabeticamente para o .out
   //for (size_t i = 0; i < num_pairs - 1; i++) {
@@ -171,7 +171,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   if (aux) {
     write(fd_out, "]\n", 2);
   }
-  pthread_mutex_unlock(&kvs_lock);
+  //pthread_mutex_unlock(&kvs_lock);
 
   return 0;
 }
@@ -208,7 +208,7 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
 
 
 void kvs_show(int fd_out) {
-  pthread_mutex_lock(&kvs_lock);
+  pthread_mutex_lock(&operations_lock);
   for (int i = 0; i < TABLE_SIZE; i++) {
     KeyNode *keyNode = kvs_table->table[i];
     while (keyNode != NULL) {
@@ -222,14 +222,14 @@ void kvs_show(int fd_out) {
       keyNode = keyNode->next; // Move to the next node
     }
   }
-  pthread_mutex_unlock(&kvs_lock);
+  pthread_mutex_unlock(&operations_lock);
 }
 
 //current_backup é definida como extern (global para todos os ficheiros) no header de operations
 int kvs_backup(int backup_count, struct file_info *file_info) {
-    pthread_mutex_lock(&kvs_lock);
+    pthread_mutex_lock(&operations_lock);
     current_backup++;
-    pthread_mutex_unlock(&kvs_lock);
+    pthread_mutex_unlock(&operations_lock);
     backup_count++; //muda aqui para o ficheiro, localmente
 
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho

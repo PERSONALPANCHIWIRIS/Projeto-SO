@@ -5,8 +5,6 @@
 
 pthread_mutex_t global_lock = PTHREAD_MUTEX_INITIALIZER;
 
-
-
 //Opens directory and iterates through the files
 void iterates_files(const char *dir_path, int backup_limit, int max_threads, pthread_t *threads) {
     DIR *dir;
@@ -34,6 +32,7 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads, pth
     }
 
     while ((entry = readdir(dir)) != NULL){
+        int thread_index = current_threads;
         if (strstr(entry->d_name, ".job") != NULL){
             //Verificação do nome
             if ((strlen(dir_path) + strlen(entry->d_name) + 1) > MAX_JOB_FILE_NAME_SIZE){
@@ -48,6 +47,7 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads, pth
                 // Espera pela primeira thread criada
                 pthread_join(threads[max_threads - current_threads], NULL);
                 pthread_mutex_lock(&global_lock);
+                thread_index = (max_threads - current_threads);
             }
             pthread_mutex_unlock(&global_lock);
             
@@ -62,7 +62,7 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads, pth
             file_info->backup_limit = backup_limit;
             
             
-            if(pthread_create(&threads[current_threads], NULL, manage_file, (void *) file_info) != 0){
+            if(pthread_create(&threads[thread_index], NULL, manage_file, (void *) file_info) != 0){
                 fprintf(stderr, "Failed to create thread\n");
                 continue;
             }

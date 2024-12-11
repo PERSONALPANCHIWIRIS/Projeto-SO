@@ -4,6 +4,8 @@
 #define TABLE_SIZE 26
 
 #include <stddef.h>
+#include <pthread.h>
+
 
 typedef struct KeyNode {
     char *key;
