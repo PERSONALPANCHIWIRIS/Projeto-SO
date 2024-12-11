@@ -8,11 +8,11 @@ pthread_mutex_t global_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 //Opens directory and iterates through the files
-void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
+void iterates_files(const char *dir_path, int backup_limit, int max_threads, pthread_t *threads) {
     DIR *dir;
     struct dirent *entry;
     char filepath[MAX_JOB_FILE_NAME_SIZE];
-    pthread_t threads[max_threads];
+    
     
     //Inicializa o mutex para os locks
     //if (pthread_mutex_init(&global_lock, NULL) != 0) {
@@ -76,12 +76,9 @@ void iterates_files(const char *dir_path, int backup_limit, int max_threads) {
             
     }
     
-    for (int i = 0; i < current_threads; i++){
-        pthread_join(threads[i], NULL);
-    }
 
-    
     closedir(dir);
+
     return;
 }
 
@@ -241,6 +238,7 @@ void *manage_file(void *arg) {
             //kvs_terminate();
             //free(file_info->file_path);
             free(file_info);
+            file_info = NULL;
             close(fd_in);
             close(fd_out);
             pthread_mutex_lock(&global_lock);

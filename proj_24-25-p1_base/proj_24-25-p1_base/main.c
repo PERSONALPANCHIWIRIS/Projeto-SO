@@ -2,6 +2,7 @@
 //#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "constants.h"
 #include "parser.h"
@@ -23,11 +24,19 @@ int main(int argc, char* argv[]) {
     
     int backup_limit = atoi(argv[2]);
     int max_threads = atoi(argv[3]);
-    iterates_files(argv[1], backup_limit, max_threads);
+    pthread_t threads[max_threads];
+    iterates_files(argv[1], backup_limit, max_threads, threads);
+
     while(current_backup > 0){
       wait(NULL);
       current_backup--;
     }
+
+    for (int i = 0; i < current_threads; i++){
+      pthread_join(threads[i], NULL);
+      threads[i] = 0;
+    }
+    //free(threads);
     kvs_terminate();
 
     return 0;

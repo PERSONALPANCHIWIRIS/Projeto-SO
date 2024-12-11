@@ -269,6 +269,7 @@ int kvs_backup(int backup_count, struct file_info *file_info) {
 
         close(fd_backup);
         free(file_info);
+        file_info = NULL;
         exit(0);//Chamada para fechar o processo filho
       } 
 

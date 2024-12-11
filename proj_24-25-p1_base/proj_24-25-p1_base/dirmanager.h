@@ -20,7 +20,7 @@
 
 // int count_files(const char *dir_path);
 // void register_files(const char *dir_path, char files[][MAX_JOB_FILE_NAME_SIZE]);
-void iterates_files(const char *dir_path, int backup_limit, int max_threads);
+void iterates_files(const char *dir_path, int backup_limit, int max_threads, pthread_t *threads);
 void *manage_file(void*arg);	
 extern pthread_mutex_t global_lock;
 

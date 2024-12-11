@@ -49,6 +49,7 @@
         "streambuf": "cpp",
         "typeinfo": "cpp",
         "operations.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "constants.h": "c"
     }
 }
