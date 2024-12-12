@@ -14,8 +14,7 @@
 #include "kvs.h"
 #include "constants.h"
 #include "operations.h"
-
-pthread_mutex_t operations_lock = PTHREAD_MUTEX_INITIALIZER;
+#include "dirmanager.h"
 
 static struct HashTable* kvs_table = NULL;
 /*      O QUE ESTÁ NO STDERR FICA NO STDERR, O RESTO VAI PARA O FICHEIRO    */
@@ -56,6 +55,11 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
   }
 
   //pthread_mutex_lock(&kvs_lock);
+  //Lock each position in the hash table corresponding to each different key
+  // for (size_t i = 0; i < num_pairs; i++) {
+  //   // Lock the position in the hash table corresponding to the key
+  //   pthread_mutex_lock(&kvs_table->kvs_lock[hash(keys[i])]);
+  // }
 
 
   for (size_t i = 0; i < num_pairs; i++) {
@@ -63,6 +67,11 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
       fprintf(stderr, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
     }
   }
+
+  // for (size_t i = 0; i < num_pairs; i++) {
+  //   // Lock the position in the hash table corresponding to the key
+  //   pthread_mutex_unlock(&kvs_table->kvs_lock[hash(keys[i])]);
+  // }
   //pthread_mutex_unlock(&kvs_lock);
 
   return 0;
@@ -100,6 +109,10 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   }
 
   //pthread_mutex_lock(&kvs_lock);
+  // for (size_t i = 0; i < num_pairs; i++) {
+  //   // Lock the position in the hash table corresponding to the key
+  //   pthread_mutex_lock(&kvs_table->kvs_lock[hash(keys[i])]);
+  // }
 
   // alfabeticamente para o .out
   for (size_t i = 0; i < num_pairs - 1; i++) {
@@ -129,6 +142,11 @@ int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   }
   write(fd_out, "]\n", 2);
 
+  // for (size_t i = 0; i < num_pairs; i++) {
+  //   // Lock the position in the hash table corresponding to the key
+  //   pthread_mutex_unlock(&kvs_table->kvs_lock[hash(keys[i])]);
+  // }
+
   //pthread_mutex_unlock(&kvs_lock);
   return 0;
 }
@@ -143,6 +161,10 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   int aux = 0;
 
   //pthread_mutex_lock(&kvs_lock);
+  // for (size_t i = 0; i < num_pairs; i++) {
+  //   // Lock the position in the hash table corresponding to the key
+  //   pthread_mutex_lock(&kvs_table->kvs_lock[hash(keys[i])]);
+  // }
 
   // alfabeticamente para o .out
   //for (size_t i = 0; i < num_pairs - 1; i++) {
@@ -171,6 +193,11 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
   if (aux) {
     write(fd_out, "]\n", 2);
   }
+  
+  // for (size_t i = 0; i < num_pairs; i++) {
+  //   // Lock the position in the hash table corresponding to the key
+  //   pthread_mutex_unlock(&kvs_table->kvs_lock[hash(keys[i])]);
+  // }
   //pthread_mutex_unlock(&kvs_lock);
 
   return 0;
@@ -208,8 +235,9 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
 
 
 void kvs_show(int fd_out) {
-  pthread_mutex_lock(&operations_lock);
+  pthread_mutex_lock(&global_lock);
   for (int i = 0; i < TABLE_SIZE; i++) {
+    pthread_mutex_lock(&kvs_table->kvs_lock[i]);
     KeyNode *keyNode = kvs_table->table[i];
     while (keyNode != NULL) {
         write(fd_out, "(", 1);
@@ -221,27 +249,28 @@ void kvs_show(int fd_out) {
       //dprintf(fd_out, "(%s, %s)\n", keyNode->key, keyNode->value);
       keyNode = keyNode->next; // Move to the next node
     }
+    pthread_mutex_unlock(&kvs_table->kvs_lock[i]);
   }
-  pthread_mutex_unlock(&operations_lock);
+  pthread_mutex_unlock(&global_lock);
 }
 
 //current_backup é definida como extern (global para todos os ficheiros) no header de operations
-int kvs_backup(int backup_count, struct file_info *file_info) {
-    pthread_mutex_lock(&operations_lock);
-    current_backup++;
-    pthread_mutex_unlock(&operations_lock);
+int kvs_backup(int backup_count, char *file_path) {
+    //pthread_mutex_lock(&operations_lock);
+    //current_backup++;
+    //pthread_mutex_unlock(&operations_lock);
     backup_count++; //muda aqui para o ficheiro, localmente
 
     pid_t pid = fork();//Cria o fork e continua a executar o pai e o filho
 
     char backup_file[MAX_JOB_FILE_NAME_SIZE];
-    strncpy(backup_file, file_info->file_path, MAX_JOB_FILE_NAME_SIZE - 5);
+    strncpy(backup_file, file_path, MAX_JOB_FILE_NAME_SIZE - 5);
     backup_file[MAX_JOB_FILE_NAME_SIZE - 5] = '\0';
     char *extension = strstr(backup_file, ".job");
     if (extension != NULL) {
       strcpy(extension, "\0");
     }
-    char bck_num[10];
+    char bck_num[12];
     sprintf(bck_num, "-%d", backup_count);
     strcat(backup_file, bck_num);
     strcat(backup_file, ".bck"); //Isto cria o nome do ficheiro de backup
@@ -268,9 +297,9 @@ int kvs_backup(int backup_count, struct file_info *file_info) {
 
 
         close(fd_backup);
-        free(file_info);
-        file_info = NULL;
-        exit(0);//Chamada para fechar o processo filho
+        //free(file_info);
+        //file_info = NULL;
+        _exit(0);//Chamada para fechar o processo filho
       } 
 
       else if (pid > 0) { // Processo pai

@@ -50,6 +50,8 @@
         "typeinfo": "cpp",
         "operations.h": "c",
         "stdlib.h": "c",
-        "constants.h": "c"
+        "constants.h": "c",
+        "pthread.h": "c",
+        "fcntl.h": "c"
     }
 }
