@@ -179,9 +179,7 @@ int kvs_backup(int backup_file_count, char *file_path) {
     if (extension) {
         strcpy(extension, "\0");
     }
-    sprintf(backup_file, "-%d.bck", backup_file_count);
-
-    
+    snprintf(backup_file + strlen(backup_file), MAX_JOB_FILE_NAME_SIZE - strlen(backup_file), "-%d.bck", backup_file_count);  
 
     // Processo filho
     if (pid == 0) { 
