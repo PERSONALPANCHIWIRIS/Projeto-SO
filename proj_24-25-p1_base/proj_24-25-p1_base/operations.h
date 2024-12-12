@@ -6,6 +6,7 @@
 extern int current_backup;
 extern int current_threads;
 
+
 /// Initializes the KVS state.
 /// @return 0 if the KVS state was initialized successfully, 1 otherwise.
 int kvs_init();
@@ -40,7 +41,7 @@ void kvs_show(int fd_out);
 
 /// Creates a backup of the KVS state and stores it in the correspondent
 /// backup file
-/// @return 0 if the backup was successful, 1 otherwise.
+/// @return 0 if the backup wass successful, 1 otherwise.
 int kvs_backup(int backup_count, char *file_path);
 
 /// Waits for the last backup to be called.
@@ -49,5 +50,6 @@ void kvs_wait_backup();
 /// Waits for a given amount of time.
 /// @param delay_us Delay in milliseconds.
 void kvs_wait(unsigned int delay_ms);
+
 
 #endif  // KVS_OPERATIONS_H
