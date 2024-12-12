@@ -164,10 +164,15 @@ void kvs_show(int fd_out) {
 int kvs_backup(int backup_file_count, char *file_path) {
     char backup_file[MAX_JOB_FILE_NAME_SIZE];
 
-    backup_file_count++;
-
     //Cria o fork e continua a executar o pai e o filho 
-    pid_t pid = fork();     
+    pid_t pid = fork();   
+
+    if (pid < 0){
+        fprintf(stderr, "Failed to fork for backup\n");
+        return 1;
+    }  
+
+    backup_file_count++;
 
     snprintf(backup_file, MAX_JOB_FILE_NAME_SIZE, "%.*s", MAX_JOB_FILE_NAME_SIZE - 5, file_path);
     char *extension = strstr(backup_file, ".job");
@@ -175,6 +180,8 @@ int kvs_backup(int backup_file_count, char *file_path) {
         strcpy(extension, "\0");
     }
     sprintf(backup_file, "-%d.bck", backup_file_count);
+
+    
 
     // Processo filho
     if (pid == 0) { 
