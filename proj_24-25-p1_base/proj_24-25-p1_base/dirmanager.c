@@ -239,7 +239,9 @@ void manage_file(char *file_path, int backup_limit) {
                     pthread_mutex_unlock(&global_lock);
                 }
 
+                pthread_mutex_lock(&global_lock);
                 current_backup++;
+                pthread_mutex_unlock(&global_lock);
                 if (kvs_backup(backup_count, file_path)) {
                     fprintf(stderr, "Failed to perform backup.\n");
                 }
