@@ -5,8 +5,7 @@
 
 pthread_mutex_t global_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t queue_lock = PTHREAD_MUTEX_INITIALIZER;
-bool done_reading = false;
-Queue q;
+
 
 
 //------------------------------------------------------------ CODE:
@@ -55,6 +54,8 @@ char* dequeue(Queue* q) {
     return file_path;
 }
 
+bool done_reading = false;
+Queue q;
 
 //entramos na diretoria e iteramos pelos ficheiros
 void iterates_files(const char *dir_path, int backup_limit, int max_threads, pthread_t *threads) {
@@ -238,6 +239,7 @@ void manage_file(char *file_path, int backup_limit) {
                     pthread_mutex_unlock(&global_lock);
                 }
 
+                current_backup++;
                 if (kvs_backup(backup_count, file_path)) {
                     fprintf(stderr, "Failed to perform backup.\n");
                 }
