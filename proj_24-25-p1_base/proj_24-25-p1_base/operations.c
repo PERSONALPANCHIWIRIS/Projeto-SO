@@ -174,12 +174,14 @@ int kvs_backup(int backup_file_count, char *file_path) {
 
     backup_file_count++;
 
-    snprintf(backup_file, MAX_JOB_FILE_NAME_SIZE, "%.*s", MAX_JOB_FILE_NAME_SIZE - 5, file_path);
+    snprintf(backup_file, MAX_JOB_FILE_NAME_SIZE, "%.*s",
+     MAX_JOB_FILE_NAME_SIZE - 5, file_path);
     char *extension = strstr(backup_file, ".job");
     if (extension) {
         strcpy(extension, "\0");
     }
-    snprintf(backup_file + strlen(backup_file), MAX_JOB_FILE_NAME_SIZE - strlen(backup_file), "-%d.bck", backup_file_count);  
+    snprintf(backup_file + strlen(backup_file),
+     MAX_JOB_FILE_NAME_SIZE - strlen(backup_file), "-%d.bck", backup_file_count);  
 
     // Processo filho
     if (pid == 0) { 
@@ -187,7 +189,8 @@ int kvs_backup(int backup_file_count, char *file_path) {
         int fd_backup = open(backup_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
         for (int i = 0; i < TABLE_SIZE; i++) {
-            for(KeyNode *keyNode = kvs_table->table[i]; keyNode != NULL; keyNode = keyNode->next) {
+            for(KeyNode *keyNode = kvs_table->table[i]; keyNode != NULL;
+             keyNode = keyNode->next) {
                 write(fd_backup, "(", 1);
                 write(fd_backup, keyNode->key, strlen(keyNode->key));
                 write(fd_backup, ", ", 2);

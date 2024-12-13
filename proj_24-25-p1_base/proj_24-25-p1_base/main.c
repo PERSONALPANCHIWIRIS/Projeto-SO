@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    //chama a função principal
     iterates_files(argv[1], backup_limit, max_threads, threads);
 
     //esperamos que todas as threads terminem
@@ -40,6 +41,7 @@ int main(int argc, char* argv[]) {
         pthread_join(threads[i], NULL);
     }
 
+    //libertamos a memoria alocada da hash table
     kvs_terminate();
 
     return 0;
