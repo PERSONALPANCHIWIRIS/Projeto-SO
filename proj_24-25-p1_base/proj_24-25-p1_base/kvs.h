@@ -6,7 +6,6 @@
 #include <stddef.h>
 #include <pthread.h>
 
-
 typedef struct KeyNode {
     char *key;
     char *value;
@@ -17,10 +16,6 @@ typedef struct HashTable {
     KeyNode *table[TABLE_SIZE];
     pthread_mutex_t kvs_lock[TABLE_SIZE];
 } HashTable;
-
-
-
-//int hash(const char *key);
 
 /// Creates a new event hash table.
 /// @return Newly created hash table, NULL on failure
@@ -48,6 +43,5 @@ int delete_pair(HashTable *ht, const char *key);
 /// Frees the hashtable.
 /// @param ht Hash table to be deleted.
 void free_table(HashTable *ht);
-
 
 #endif  // KVS_H

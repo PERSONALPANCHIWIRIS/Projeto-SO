@@ -1,37 +1,41 @@
-#include "kvs.h"
-#include "string.h"
-
 #include <stdlib.h>
 #include <ctype.h>
 
+#include "kvs.h"
+#include "string.h"
 
-//pthread_mutex_t kvs_lock = PTHREAD_MUTEX_INITIALIZER;
 
+//------------------------------------------------------------ CODE:
 // Hash function based on key initial.
 // @param key Lowercase alphabetical string.
 // @return hash.
-// NOTE: This is not an ideal hash function, but is useful for test purposes of the project
+// NOTE: This is not an ideal hash function, but is useful for test 
+//      purposes of the project
 int hash(const char *key) {
     int firstLetter = tolower(key[0]);
+
     if (firstLetter >= 'a' && firstLetter <= 'z') {
         return firstLetter - 'a';
     } else if (firstLetter >= '0' && firstLetter <= '9') {
         return firstLetter - '0';
     }
+
     return -1; // Invalid index for non-alphabetic or number strings
 }
 
 
 struct HashTable* create_hash_table() {
-  HashTable *ht = malloc(sizeof(HashTable));
-  if (!ht) return NULL;
-  for (int i = 0; i < TABLE_SIZE; i++) {
-      ht->table[i] = NULL;
-      //TENTATIVA 1
-      pthread_mutex_init(&ht->kvs_lock[i], NULL);
-  }
-  return ht;
+    HashTable *ht = malloc(sizeof(HashTable));
+
+    if (!ht) return NULL;
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        ht->table[i] = NULL;
+        pthread_mutex_init(&ht->kvs_lock[i], NULL);
+    }
+    
+    return ht;
 }
+
 
 int write_pair(HashTable *ht, const char *key, const char *value) {
     int index = hash(key);
@@ -41,7 +45,7 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
     // Search for the key node
     while (keyNode != NULL) {
         if (strcmp(keyNode->key, key) == 0) {
-            free(keyNode->value); // debug para memory leak
+            free(keyNode->value); 
             keyNode->value = strdup(value);
             pthread_mutex_unlock(&ht->kvs_lock[index]);
             return 0;
@@ -55,10 +59,12 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
     keyNode->value = strdup(value); // Allocate memory for the value
     keyNode->next = ht->table[index]; // Link to existing nodes
     ht->table[index] = keyNode; // Place new key node at the start of the list
+
     pthread_mutex_unlock(&ht->kvs_lock[index]);
+
     return 0;
-    
 }
+
 
 char* read_pair(HashTable *ht, const char *key) {
     int index = hash(key);
@@ -66,7 +72,7 @@ char* read_pair(HashTable *ht, const char *key) {
     KeyNode *keyNode = ht->table[index];
     char* value;
 
-    while (keyNode != NULL) {
+    while (keyNode) {
         if (strcmp(keyNode->key, key) == 0) {
             value = strdup(keyNode->value);
             pthread_mutex_unlock(&ht->kvs_lock[index]); 
@@ -79,6 +85,7 @@ char* read_pair(HashTable *ht, const char *key) {
     
 }
 
+
 int delete_pair(HashTable *ht, const char *key) {
     int index = hash(key);
     pthread_mutex_lock(&ht->kvs_lock[index]); 
@@ -86,7 +93,7 @@ int delete_pair(HashTable *ht, const char *key) {
     KeyNode *prevNode = NULL;
 
     // Search for the key node
-    while (keyNode != NULL) {
+    while (keyNode) {
         if (strcmp(keyNode->key, key) == 0) {
             // Key found; delete this node
             if (prevNode == NULL) {
@@ -101,6 +108,7 @@ int delete_pair(HashTable *ht, const char *key) {
             free(keyNode->value);
             free(keyNode); // Free the key node itself
             pthread_mutex_unlock(&ht->kvs_lock[index]); 
+
             return 0; // Exit the function
         }
         prevNode = keyNode; // Move prevNode to current node
@@ -110,7 +118,9 @@ int delete_pair(HashTable *ht, const char *key) {
     return 1;
 }
 
+
 void free_table(HashTable *ht) {
+
     for (int i = 0; i < TABLE_SIZE; i++) {
         KeyNode *keyNode = ht->table[i];
         while (keyNode != NULL) {
@@ -121,9 +131,9 @@ void free_table(HashTable *ht) {
             free(temp);
         }
     }
-    //TENTATIVA 2
     for (int i = 0; i < TABLE_SIZE; i++) {
         pthread_mutex_destroy(&ht->kvs_lock[i]);
     }
+    
     free(ht);
 }

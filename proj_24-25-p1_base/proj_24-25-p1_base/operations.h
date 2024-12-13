@@ -44,12 +44,8 @@ void kvs_show(int fd_out);
 /// @return 0 if the backup wass successful, 1 otherwise.
 int kvs_backup(int backup_count, char *file_path);
 
-/// Waits for the last backup to be called.
-void kvs_wait_backup();
-
 /// Waits for a given amount of time.
 /// @param delay_us Delay in milliseconds.
 void kvs_wait(unsigned int delay_ms);
-
 
 #endif  // KVS_OPERATIONS_H

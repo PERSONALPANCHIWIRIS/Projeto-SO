@@ -52,6 +52,7 @@
         "stdlib.h": "c",
         "constants.h": "c",
         "pthread.h": "c",
-        "fcntl.h": "c"
+        "fcntl.h": "c",
+        "string.h": "c"
     }
 }

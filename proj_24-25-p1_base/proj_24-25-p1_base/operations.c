@@ -1,24 +1,8 @@
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <time.h>
-// #include <dirent.h>
-// #include <unistd.h>
-// #include <fcntl.h>
-// #include <sys/stat.h>
-// #include <sys/types.h>
-// #include <sys/wait.h>
-// #include <pthread.h>
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 
 #include "kvs.h"
 #include "constants.h"
@@ -38,7 +22,7 @@ static struct timespec delay_to_timespec(unsigned int delay_ms) {
 
 
 int kvs_init() {
-    if (kvs_table /*!= NULL*/) {
+    if (kvs_table) {
         fprintf(stderr, "KVS state has already been initialized\n");
         return 1;
     }
@@ -60,7 +44,8 @@ int kvs_terminate() {
 }
 
 
-int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE]) {
+int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], 
+              char values[][MAX_STRING_SIZE]) {
     if (kvs_table == NULL) {
         fprintf(stderr, "KVS state must be initialized\n");
         return 1;
@@ -68,7 +53,8 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
 
     for (size_t i = 0; i < num_pairs; i++) {
         if (write_pair(kvs_table, keys[i], values[i]) != 0) {
-            fprintf(stderr, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
+            fprintf(stderr, "Failed to write keypair (%s,%s)\n", 
+                    keys[i], values[i]);
         }
     }
 
@@ -122,10 +108,11 @@ int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int fd_out) {
         fprintf(stderr, "KVS state must be initialized\n");
         return 1;
     }
+
     int aux = 0;
 
     for (size_t i = 0; i < num_pairs; i++) {
-        if (delete_pair(kvs_table, keys[i]) != 0) {
+        if (delete_pair(kvs_table, keys[i])) {
             if (!aux) {
                 write(fd_out, "[", 1);
                 aux = 1;
@@ -148,7 +135,8 @@ void kvs_show(int fd_out) {
 
     for (int i = 0; i < TABLE_SIZE; i++) {
         pthread_mutex_lock(&kvs_table->kvs_lock[i]);
-        for(KeyNode *keyNode = kvs_table->table[i]; keyNode != NULL; keyNode = keyNode->next) {
+        for(KeyNode *keyNode = kvs_table->table[i]; keyNode != NULL; 
+            keyNode = keyNode->next) {
             write(fd_out, "(", 1);
             write(fd_out, keyNode->key, strlen(keyNode->key));
             write(fd_out, ", ", 2);
@@ -167,50 +155,48 @@ int kvs_backup(int backup_file_count, char *file_path) {
     //Cria o fork e continua a executar o pai e o filho 
     pid_t pid = fork();   
 
+    //Caso em que o fork falha
     if (pid < 0){
         fprintf(stderr, "Failed to fork for backup\n");
-        return 1;
+        return 1;   //houve um erro
     }  
+    // Processo pai    
+    else if (pid > 0) { 
+        //Não faz nada, apenas retorna onde foi chamado
+        return 0;
+    }
 
     backup_file_count++;
 
-    snprintf(backup_file, MAX_JOB_FILE_NAME_SIZE, "%.*s",
-     MAX_JOB_FILE_NAME_SIZE - 5, file_path);
+    //criação do nome do ficheiro de backup
+    snprintf(backup_file, MAX_JOB_FILE_NAME_SIZE, "%.*s", 
+             MAX_JOB_FILE_NAME_SIZE - 5, file_path);
     char *extension = strstr(backup_file, ".job");
     if (extension) {
         strcpy(extension, "\0");
     }
-    snprintf(backup_file + strlen(backup_file),
-     MAX_JOB_FILE_NAME_SIZE - strlen(backup_file), "-%d.bck", backup_file_count);  
+    snprintf(backup_file + strlen(backup_file), 
+             MAX_JOB_FILE_NAME_SIZE - strlen(backup_file), "-%d.bck", 
+             backup_file_count);  
 
-    // Processo filho
-    if (pid == 0) { 
-        //cria o ficheiro de backup 
-        int fd_backup = open(backup_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    //criação do ficheiro de backup
+    int fd_backup = open(backup_file, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
-        for (int i = 0; i < TABLE_SIZE; i++) {
-            for(KeyNode *keyNode = kvs_table->table[i]; keyNode != NULL;
-             keyNode = keyNode->next) {
-                write(fd_backup, "(", 1);
-                write(fd_backup, keyNode->key, strlen(keyNode->key));
-                write(fd_backup, ", ", 2);
-                write(fd_backup, keyNode->value, strlen(keyNode->value));
-                write(fd_backup, ")\n", 2);                
-            }
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        for(KeyNode *keyNode = kvs_table->table[i]; keyNode != NULL;
+            keyNode = keyNode->next) {
+
+            write(fd_backup, "(", 1);
+            write(fd_backup, keyNode->key, strlen(keyNode->key));
+            write(fd_backup, ", ", 2);
+            write(fd_backup, keyNode->value, strlen(keyNode->value));
+            write(fd_backup, ")\n", 2);     
+                       
         }
+    }
 
-        close(fd_backup);
-        _exit(0);//Chamada para fechar o processo filho
-    } 
-    // Processo pai
-    else if (pid > 0) { 
-        //não faz nada, apenas retorna onde foi chamado
-        return 0;
-    }
-    else { 
-        fprintf(stderr, "Failed to fork for backup\n");
-    }
-    return 0;
+    close(fd_backup);
+    _exit(0);      //Chamada para fechar o processo filho
 }
   
 

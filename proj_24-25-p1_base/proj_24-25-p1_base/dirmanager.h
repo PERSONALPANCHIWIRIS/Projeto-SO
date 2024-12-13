@@ -3,7 +3,6 @@
 
 #include <dirent.h>
 #include <stdio.h>
-#include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -13,7 +12,6 @@
 
 #include "parser.h"
 #include "operations.h"
-//#include "constants.h"
 
 extern pthread_mutex_t global_lock;
 
@@ -23,8 +21,7 @@ typedef struct Node {
 } Node;
 
 typedef struct Queue {
-    Node* first;
-    Node* last;
+    Node *first, *last;
     int backup_limit;
 } Queue;
 
@@ -35,6 +32,5 @@ void init_queue(Queue* q);
 int is_empty(Queue* q);
 void enqueue(Queue* q, const char* file_path);
 char* dequeue(Queue* q);
-
 
 #endif // DIRMANAGER_H
