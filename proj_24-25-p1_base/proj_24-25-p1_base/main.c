@@ -27,6 +27,11 @@ int main(int argc, char* argv[]) {
     int max_threads = atoi(argv[3]);
     pthread_t threads[max_threads];
 
+    // inicializa threads com todos os elementos a 0
+    for (int i = 0; i < max_threads; i++) {
+        threads[i] = 0;
+    }
+
     if (kvs_init()) {
         fprintf(stderr, "Failed to initialize KVS\n");
         return 1;
@@ -37,7 +42,9 @@ int main(int argc, char* argv[]) {
 
     //esperamos que todas as threads terminem
     for (int i = 0; i < max_threads; i++) {
-        pthread_join(threads[i], NULL);
+        if (threads[i] != 0) {
+            pthread_join(threads[i], NULL);
+        }
     }
 
     //libertamos a memoria alocada da hash table
