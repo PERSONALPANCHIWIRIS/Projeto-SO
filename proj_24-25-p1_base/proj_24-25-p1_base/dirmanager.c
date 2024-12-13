@@ -268,9 +268,10 @@ void manage_file(char *file_path, int backup_limit) {
                 //É sempre verificado se o número de backups atingiu o limite
                 pthread_mutex_lock(&global_lock);
                 if (current_backup >= backup_limit){
-                    wait(NULL);     //espera pelo fim de um backup
-                    current_backup--;
                     pthread_mutex_unlock(&global_lock);
+                    wait(NULL);     //espera pelo fim de um backup
+                    pthread_mutex_lock(&global_lock);
+                    current_backup--;
                 }
                 pthread_mutex_unlock(&global_lock);
 
