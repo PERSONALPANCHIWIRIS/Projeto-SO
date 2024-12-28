@@ -5,4 +5,7 @@
 #define MAX_STRING_SIZE 40
 #define MAX_JOB_FILE_NAME_SIZE 256
 
+#define S 1 //Variavel arbitraria que define o limite de 
+//sessões que o servidor pode ter em simultaneo
+
 #endif //CONSTANTS_H

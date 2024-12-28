@@ -29,6 +29,22 @@ int main(int argc, char* argv[]) {
   strncat(resp_pipe_path, argv[1], strlen(argv[1]) * sizeof(char));
   strncat(notif_pipe_path, argv[1], strlen(argv[1]) * sizeof(char));
 
+  // Criação dos named pipes
+  if (mkfifo(req_pipe_path, 0666) == -1) {
+    perror("Failed to create request FIFO");
+    return 1;
+  }
+
+  if (mkfifo(resp_pipe_path, 0666) == -1) {
+    perror("Failed to create response FIFO");
+    return 1;
+  }
+
+  if (mkfifo(notif_pipe_path, 0666) == -1) {
+    perror("Failed to create notification FIFO");
+    return 1;
+  }
+
   // TODO open pipes
 
   while (1) {
