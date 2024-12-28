@@ -45,7 +45,18 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  // Abrir o FIFO de notificações
+  int notif_pipe = open(notif_pipe_path, O_RDONLY | O_NONBLOCK);
+  if (notif_pipe == -1) {
+    perror("Erro ao abrir FIFO de notificações");
+    return 1;
+  }
+
   // TODO open pipes
+  if (kvs_connect(req_pipe_path, resp_pipe_path, argv[2], notif_pipe_path, notif_pipe) != 0) {
+    fprintf(stderr, "Failed to connect to the server\n");
+    return 1;
+  }
 
   while (1) {
     switch (get_next(STDIN_FILENO)) {

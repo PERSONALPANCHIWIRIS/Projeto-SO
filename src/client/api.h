@@ -4,6 +4,12 @@
 #include <stddef.h>
 #include "src/common/constants.h"
 
+typedef struct message{
+    int opcode;
+    char key[64];    // Chave para o subscribe/unsubscribe
+    char data[256];  // Os ID's dos pipes
+} Message;
+
 /// Connects to a kvs server.
 /// @param req_pipe_path Path to the name pipe to be created for requests.
 /// @param resp_pipe_path Path to the name pipe to be created for responses.

@@ -2,14 +2,59 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 #include "constants.h"
 #include "parser.h"
 #include "operations.h"
 #include "dirmanager.h"
+#include "api.h"
 
 int current_backup = 0;
 int current_threads = 0;
+
+
+bool process_client_request(Message* msg) {
+    switch (msg->opcode) {
+        case 1:
+            // Processar a conexão
+            return false;
+
+        case 2:
+            // Processar desconexão
+            return true;
+        case 3:
+            // Processar subscrição
+            return false;
+
+        case 4:
+            // Processar cancelamento de subscrição
+            return false;
+
+        default:
+            return false;
+    }
+}
+
+void process_client(Message* msg, int fd_register) {
+    bool done = false;
+    while(!done){
+        char buffer[128];
+
+        // Ler pedido do cliente (bloqueante)
+        ssize_t bytes_read = read(fd_register, buffer, sizeof(buffer));
+        if (bytes_read <= 0) {
+            perror("Erro ao ler do FIFO de registro");
+            break;
+        }
+
+        buffer[bytes_read] = '\0'; // Garantir terminação da string
+
+        // Processar o pedido do cliente
+        done = process_client_request(buffer);
+    }
+    return NULL;
+}
 
 
 //------------------------------------------------------------ CODE:
