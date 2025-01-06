@@ -25,7 +25,7 @@ typedef struct Queue {
     int backup_limit;
 } Queue;
 
-void iterates_files(const char *dir_path, int backup_limit, int max_threads, pthread_t *threads);
+void iterates_files(const char *dir_path, int backup_limit, Queue* q);
 void manage_file(char *file_path, int backup_limit);
 void *thread_queue(void *arg);
 void init_queue(Queue* q);

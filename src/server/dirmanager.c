@@ -9,7 +9,7 @@ pthread_mutex_t global_lock = PTHREAD_MUTEX_INITIALIZER;
 //lock para a queue
 pthread_mutex_t queue_lock = PTHREAD_MUTEX_INITIALIZER;
 bool done_reading = false;
-Queue q;
+//Queue q;
 
 
 //------------------------------------------------------------ CODE:
@@ -71,16 +71,15 @@ char* dequeue(Queue* queue) {
 
 
 //entramos na diretoria e iteramos pelos ficheiros
-void iterates_files(const char *dir_path, int backup_limit, 
-                    int max_threads,pthread_t *threads) {
+void iterates_files(const char *dir_path, int backup_limit, Queue* q) {
     DIR *dir;
     struct dirent *entry;
     char filepath[MAX_JOB_FILE_NAME_SIZE];
 
     //inicializamos a queue
     pthread_mutex_lock(&queue_lock);
-    init_queue(&q);
-    q.backup_limit = backup_limit;
+    init_queue(q);
+    q->backup_limit = backup_limit;
     pthread_mutex_unlock(&queue_lock);
 
     //abrimos a diretoria
@@ -106,7 +105,7 @@ void iterates_files(const char *dir_path, int backup_limit,
 
             //adiciona o ficheiro à queue
             pthread_mutex_lock(&queue_lock);
-            enqueue(&q, filepath);
+            enqueue(q, filepath);
             pthread_mutex_unlock(&queue_lock);
         }    
     }
@@ -116,19 +115,20 @@ void iterates_files(const char *dir_path, int backup_limit,
     done_reading = true;
     pthread_mutex_unlock(&queue_lock);
 
-    //inicializa as threads para a função thread_queue
-    for (int i = 0; i < max_threads; i++){
-        if (pthread_create(&threads[i], NULL, thread_queue, 
-                                             (void *) &q)) {
-            fprintf(stderr, "Failed to create thread\n");
-            continue;
-        }   
-    }
+
+    // //inicializa as threads para a função thread_queue
+    // for (int i = 0; i < max_threads; i++){
+    //     if (pthread_create(&threads[i], NULL, thread_queue, 
+    //                                          (void *) &q)) {
+    //         fprintf(stderr, "Failed to create thread\n");
+    //         continue;
+    //     }   
+    // }
     
-    //espera que todos os backups terminem antes de fechar a diretoria
-    for (int i = 0; i < backup_limit; i++){
-        wait(NULL);
-    }
+    // //espera que todos os backups terminem antes de fechar a diretoria
+    // for (int i = 0; i < backup_limit; i++){
+    //     wait(NULL);
+    // }
 
     closedir(dir);
 

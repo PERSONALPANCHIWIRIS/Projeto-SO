@@ -53,6 +53,7 @@
         "constants.h": "c",
         "pthread.h": "c",
         "fcntl.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "stdbool.h": "c"
     }
 }

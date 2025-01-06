@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "parser.h"
 #include "src/client/api.h"
@@ -53,7 +54,7 @@ int main(int argc, char* argv[]) {
   }
 
   // TODO open pipes
-  if (kvs_connect(req_pipe_path, resp_pipe_path, argv[2], notif_pipe_path, notif_pipe) != 0) {
+  if (kvs_connect(req_pipe_path, resp_pipe_path, argv[2], notif_pipe_path, &notif_pipe) != 0) {
     fprintf(stderr, "Failed to connect to the server\n");
     return 1;
   }

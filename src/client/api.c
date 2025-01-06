@@ -2,6 +2,10 @@
 #include "src/common/constants.h"
 #include "src/common/protocol.h"
 #include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
 
 int server_fd;
 
@@ -9,11 +13,12 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
                 char const* notif_pipe_path, int* notif_pipe) {
 
   // Abrir o FIFO do servidor
-  int server_fd = open(server_pipe_path, O_WRONLY);
+  server_fd = open(server_pipe_path, O_WRONLY);
   if (server_fd == -1) {
     perror("Error opening server FIFO");
     return 1;
   }
+  notif_pipe++; //DEpois vemos o que fazemos com isto
 
   // Enviar mensagem de conexão para o servidor
   Message msg;
