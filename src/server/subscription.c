@@ -59,7 +59,7 @@ int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pi
             while (node != NULL) {
                 if (strcmp(node->notif_pipe_path, notif_pipe_path) == 0) {
                     pthread_mutex_unlock(&map->lock[index]);
-                    return 0; // Já subscreveu
+                    return 1; // Já subscreveu
                 }
                 //Encontrou um espaço vazio
                 node = node->next;
@@ -124,7 +124,7 @@ int remove_subscription(SubscriptionMap* map, const char* key, const char* notif
     }
     //Se não existir, só retorna -1
     pthread_mutex_unlock(&map->lock[index]);
-    return -1;
+    return 1;
 }
 
 void notify_subscribers(SubscriptionMap* map, const char* key, const char* message) {

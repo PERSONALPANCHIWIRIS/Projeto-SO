@@ -112,7 +112,12 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             int client_resp_fd = open(resp_pipe_path, O_WRONLY);
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 2 for operation: <disconnect>\n", 47);    
+                //Sucesso
+                write(client_resp_fd, "Server returned 0 for operation: <disconnect>\n", 47);    
+            }
+            else{
+                //Erro
+                write(client_resp_fd, "Server returned 1 for operation: <disconnect>\n", 47);
             }
             close(client_resp_fd);
 
@@ -126,11 +131,20 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             int client_resp_fd = open(resp_pipe_path, O_WRONLY);
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 3 for operation: <subscribe>\n", 47);    
+                write(client_resp_fd, "Server returned 0 for operation: <subscribe>\n", 47);    
+            }
+            else{
+                write(client_resp_fd, "Server returned 1 for operation: <subscribe>\n", 47);
             }
             close(client_resp_fd);
 
-            add_subscription(subscription_map, msg->key, notif_pipe_path);
+            int existed = add_subscription(subscription_map, msg->key, notif_pipe_path);
+            if (existed == 1){
+                write(client_resp_fd, "Server returned 0 for operation: <subscribe>\n", 47);
+            }
+            else{
+                write(client_resp_fd, "Server returned 1 for operation: <subscribe>\n", 47);
+            }
             return false;
 
         case 4:
@@ -138,11 +152,20 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             int client_resp_fd = open(resp_pipe_path, O_WRONLY);
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 4 for operation: <unsubscribe>\n", 47);    
+                write(client_resp_fd, "Server returned 0 for operation: <unsubscribe>\n", 47);    
+            }
+            else{
+                write(client_resp_fd, "Server returned 1 for operation: <unsubscribe>\n", 47);
             }
             close(client_resp_fd);
 
-            remove_subscription(subscription_map, msg->key, notif_pipe_path);
+            int existed = remove_subscription(subscription_map, msg->key, notif_pipe_path);
+            if (existed == 1){
+                write(client_resp_fd, "Server returned 0 for operation: <unsubscribe>\n", 47);
+            }
+            else{
+                write(client_resp_fd, "Server returned 1 for operation: <unsubscribe>\n", 47);
+            }
             return false;
 
         default:
@@ -160,7 +183,7 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
         int client_req_fd = open(req_pipe_path, O_RDONLY);
         ssize_t bytes_read = read(client_req_fd, &msg, sizeof(msg));
         if (bytes_read <= 0) {
-            perror("Erro ao ler do FIFO de request");
+            perror("Error reading request from client");
             break;
         }
 
@@ -174,7 +197,7 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
     // pthread_t client_threads[S];
     int fd_register = open(server_fifo, O_RDONLY); //Abre a de registo do lado do server
     if (fd_register == -1) {
-        perror("Erro ao abrir FIFO de registro");
+        perror("Error opening FIFO");
         return;
     }
 
@@ -207,6 +230,9 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
                 int client_resp_fd = open(resp_pipe_path, O_WRONLY);
                 if (client_resp_fd != -1) {
                     //Isto para a operação connect
+                    write(client_resp_fd, "Server returned 0 for operation: <connect>\n", 44);
+                }
+                else{
                     write(client_resp_fd, "Server returned 1 for operation: <connect>\n", 44);
                 }
                 close(client_resp_fd);
