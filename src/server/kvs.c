@@ -3,6 +3,7 @@
 
 #include "kvs.h"
 #include "string.h"
+#include "subscription.h"
 
 
 //------------------------------------------------------------ CODE:
@@ -61,6 +62,9 @@ int write_pair(HashTable *ht, const char *key, const char *value) {
     ht->table[index] = keyNode; // Place new key node at the start of the list
 
     pthread_mutex_unlock(&ht->kvs_lock[index]);
+    char message[256];
+    snprintf(message, sizeof(message), "(%s,%s)", key, value);
+    notify_subscribers(subscription_map, key, message);
 
     return 0;
 }
@@ -107,7 +111,11 @@ int delete_pair(HashTable *ht, const char *key) {
             free(keyNode->key);
             free(keyNode->value);
             free(keyNode); // Free the key node itself
-            pthread_mutex_unlock(&ht->kvs_lock[index]); 
+            pthread_mutex_unlock(&ht->kvs_lock[index]);
+
+            char message[256];
+            snprintf(message, sizeof(message), "(%s,%s)", key, "DELETED");
+            notify_subscribers(subscription_map, key, message); 
 
             return 0; // Exit the function
         }

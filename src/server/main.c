@@ -30,7 +30,6 @@ typedef struct ClientQueue {
     pthread_cond_t cond;          // Condição para notificar threads
 } ClientQueue;
 
-SubscriptionMap* subscription_map; // Mapa de subscrições (declaração)
 
 // Inicializar a fila de clientes
 void init_client_queue(ClientQueue* queue) {

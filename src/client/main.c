@@ -5,11 +5,29 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
 #include "parser.h"
 #include "src/client/api.h"
 #include "src/common/constants.h"
 #include "src/common/io.h"
+
+bool stop_notifications = false;
+
+void read_notifications(void* arg) {
+  int notif_pipe = (int) arg;
+  char buffer[256];
+  //Ciclo infinito smepre à espera de notificações
+  while (!stop_notifications){
+    ssize_t bytes_read = read(notif_pipe, buffer, sizeof(buffer));
+    if (bytes_read > 0) {
+      buffer[bytes_read] = '\0';
+      fprintf(stdout, "%s\n", buffer);
+    }
+  }
+  close(notif_pipe);
+  return NULL; 
+}
 
 
 int main(int argc, char* argv[]) {
@@ -53,6 +71,10 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  // Thread para ler as notificações
+  pthread_t notif_thread;
+  pthread_create(&notif_thread, NULL, (void*) read_notifications, (void*) notif_pipe);
+
   // TODO open pipes
   if (kvs_connect(req_pipe_path, resp_pipe_path, argv[2], notif_pipe_path, &notif_pipe) != 0) {
     fprintf(stderr, "Failed to connect to the server\n");
@@ -67,7 +89,8 @@ int main(int argc, char* argv[]) {
           return 1;
         }
         // TODO: end notifications thread
-        close(notif_pipe);
+        stop_notifications = true;
+        pthread_join(notif_thread, NULL);
         //Apaga as pipes criadas
         if (unlink(req_pipe_path) == -1) {
         perror("Failed to remove request FIFO");

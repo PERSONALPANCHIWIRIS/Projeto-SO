@@ -25,6 +25,8 @@ typedef struct SubscriptionMap {
     pthread_mutex_t lock[TABLE_SIZE];
 } SubscriptionMap;
 
+extern SubscriptionMap* subscription_map; // Declaração externa
+
 SubscriptionMap* create_subscription_map();
 void free_subscription_map(SubscriptionMap* map);
 int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path);
