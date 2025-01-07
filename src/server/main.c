@@ -183,9 +183,11 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
         }   
     }
 
-    while (1){
+    //while (1){  //Loop infinito a espera de clientes
+    //como para 1.1 só vem um cliente, obvio por agora
         Message msg;
         // Ler pedido do proximo cliente (bloqueante)
+        //Le do fifo de registo
         ssize_t bytes_read = read(fd_register, &msg, sizeof(msg));
         if (bytes_read > 0){
             if (msg.opcode == 1) { // Conexão de cliente
@@ -193,7 +195,7 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
                 char resp_pipe_path[256];
                 char notif_pipe_path[256];
 
-                // Parse the message data to get the pipe paths
+                // Tira o caminho das pipes do cliente
                 sscanf(msg.data, "%s|%s|%s", req_pipe_path, resp_pipe_path, notif_pipe_path);
 
                 // Enfileira o cliente na fila de clientes
@@ -213,7 +215,7 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
             }
         }
 
-    }
+    //}
     
     //espera que todos os backups terminem antes de terminar
     for (int i = 0; i < backup_limit; i++){
