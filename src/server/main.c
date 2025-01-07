@@ -9,6 +9,7 @@
 #include "operations.h"
 #include "dirmanager.h"
 #include "../client/api.h"
+#include "subscription.h"
 
 int current_backup = 0;
 int current_threads = 0;
@@ -17,6 +18,8 @@ pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct ClientNode {
     int client_fd;                // File descriptor do cliente
+    char resp_pipe_path[256];     // Caminho do pipe de resposta
+    char notif_pipe_path[256];    // Caminho do pipe de notificação
     struct ClientNode* next;      // Próximo cliente na fila
 } ClientNode;
 
@@ -35,9 +38,13 @@ void init_client_queue(ClientQueue* queue) {
 }
 
 // Enfileirar um cliente na fila
-void enqueue_client(ClientQueue* queue, int client_fd) {
+void enqueue_client(ClientQueue* queue, int client_fd, const char* resp_pipe_path, const char* notif_pipe_path) {
     ClientNode* new_node = (ClientNode*)malloc(sizeof(ClientNode));
     new_node->client_fd = client_fd;
+    strncpy(new_node->resp_pipe_path, resp_pipe_path, sizeof(new_node->resp_pipe_path) - 1);
+    strncpy(new_node->notif_pipe_path, notif_pipe_path, sizeof(new_node->notif_pipe_path) - 1);
+    new_node->resp_pipe_path[sizeof(new_node->resp_pipe_path) - 1] = '\0';
+    new_node->notif_pipe_path[sizeof(new_node->notif_pipe_path) - 1] = '\0';
     new_node->next = NULL;
 
     pthread_mutex_lock(&queue->mutex);
@@ -52,20 +59,20 @@ void enqueue_client(ClientQueue* queue, int client_fd) {
 }
 
 // Desenfileirar um cliente da fila
-int dequeue_client(ClientQueue* queue) {
+ClientNode* dequeue_client(ClientQueue* queue) {
     pthread_mutex_lock(&queue->mutex);
     while (queue->front == NULL) {
         pthread_cond_wait(&queue->cond, &queue->mutex);
     }
     ClientNode* temp = queue->front;
-    int client_fd = temp->client_fd;
+    //int client_fd = temp->client_fd;
     queue->front = queue->front->next;
     if (queue->front == NULL) {
         queue->rear = NULL;
     }
-    free(temp);
+    //free(temp);
     pthread_mutex_unlock(&queue->mutex);
-    return client_fd;
+    return temp;
 }
 
 // Verificar se a fila está vazia
@@ -90,6 +97,7 @@ void destroy_client_queue(ClientQueue* queue) {
     pthread_cond_destroy(&queue->cond);
 }
 
+//OPERACOES COM CLIENTES
 bool process_client_request(Message* msg) {
     switch (msg->opcode) {
         // case 1:
@@ -202,16 +210,24 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
                 //identificador do cliente é o file descriptor
                 int client_fd = open(req_pipe_path, O_RDONLY);
                 if (client_fd != -1) {
-                    enqueue_client(pool_clients, client_fd);
+                    enqueue_client(pool_clients, client_fd, resp_pipe_path, notif_pipe_path);
+                }
+                int client_resp_fd = open(resp_pipe_path, O_WRONLY);
+                if (client_resp_fd != -1) {
+                    //Isto para a operação connect
+                    write(client_resp_fd, "Server returned 1 for operation: <connect>\n", 44);
+                    close(client_resp_fd);
                 }
             }
         }
 
         // Verifica e processa a fila de clientes
         if (!is_client_queue_empty(pool_clients)) {
-            int client_fd = dequeue_client(pool_clients);
+            ClientNode* temp = dequeue_client(pool_clients);
+            int client_fd = temp->client_fd;
             if (client_fd != -1) {
                 process_client(client_fd);
+                free(temp);
             }
         }
 
@@ -225,6 +241,7 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
     close(fd_register);
 }   
 
+SubscriptionMap* subscription_map; // Mapa de subscrições
 //------------------------------------------------------------ CODE:
 int main(int argc, char* argv[]) {
 
@@ -244,6 +261,13 @@ int main(int argc, char* argv[]) {
     // inicializa threads com todos os elementos a 0
     for (int i = 0; i < max_threads; i++) {
         threads[i] = 0;
+    }
+
+    //cria o mapa de subscrições
+    subscription_map = create_subscription_map();
+    if (!subscription_map) {
+        fprintf(stderr, "Failed to create subscription map\n");
+        return 1;
     }
 
     const char *server_fifo = argv[4];
@@ -274,6 +298,7 @@ int main(int argc, char* argv[]) {
 
     //libertamos a memoria alocada da hash table
     kvs_terminate();
+    free_subscription_map(subscription_map);
 
     return 0;
 }
