@@ -18,7 +18,7 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
     perror("Error opening server FIFO");
     return 1;
   }
-  notif_pipe++; //DEpois vemos o que fazemos com isto
+  notif_pipe++; //Depois vemos o que fazemos com isto
 
   // Enviar mensagem de conexão para o servidor
   Message msg;
@@ -27,18 +27,51 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
   //Envia os dados dos pipes ao servidor para que este possa comunicar com o cliente
   write(server_fd, &msg, sizeof(msg));
 
+  //Le a mesnagem de connect com sucesso
+  int client_resp_fd = open(resp_pipe_path, O_RDONLY);
+  char response[MAX_STRING_SIZE];
+  ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
+  if (bytes_read <= 0) {
+    perror("Erro ao ler do FIFO de request");
+    close(client_resp_fd);
+    return -1;
+  }
+  close(client_resp_fd);
+  response[bytes_read] = '\0'; //Garantir que acaba em \0
+  fprintf(stdout, "%s\n", response);
+
+
   return 0;
 }
  
-int kvs_disconnect(void) {
+int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path) {
   Message msg;
   msg.opcode = 2;
-
-  if (write(server_fd, &msg, sizeof(msg)) < 0) {
+  
+  //Comunca com o server e envia a mensagem de disconnect
+  int client_req_fd = open(req_pipe_path, O_WRONLY);
+  if (write(client_req_fd, &msg, sizeof(msg)) < 0) {
     perror("Error sending disconnect message");
-    close(server_fd);
+    close(client_req_fd);
     return -1;
   }
+  close(client_req_fd);
+
+  //Le a mesnagem de disconnect com sucesso
+  int client_resp_fd = open(resp_pipe_path, O_RDONLY);
+  char response[MAX_STRING_SIZE];
+  ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
+  if (bytes_read <= 0) {
+    perror("Erro ao ler do FIFO de request");
+    close(client_resp_fd);
+    return -1;
+  }
+  close(client_resp_fd);
+  response[bytes_read] = '\0'; //Garantir que acaba em \0
+  fprintf(stdout, "%s\n", response);
+
+  //Depois de estar todo fechado do lado do server, fecha no cliente
+  close(server_fd);
   return 0;
 }
 

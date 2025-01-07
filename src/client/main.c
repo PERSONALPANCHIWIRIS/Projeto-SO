@@ -62,11 +62,22 @@ int main(int argc, char* argv[]) {
   while (1) {
     switch (get_next(STDIN_FILENO)) {
       case CMD_DISCONNECT:
-        if (kvs_disconnect() != 0) {
+        if (kvs_disconnect(req_pipe_path, resp_pipe_path) != 0) {
           fprintf(stderr, "Failed to disconnect to the server\n");
           return 1;
         }
         // TODO: end notifications thread
+        close(notif_pipe);
+        //Apaga as pipes criadas
+        if (unlink(req_pipe_path) == -1) {
+        perror("Failed to remove request FIFO");
+        }
+        if (unlink(resp_pipe_path) == -1) {
+            perror("Failed to remove response FIFO");
+        }
+        if (unlink(notif_pipe_path) == -1) {
+            perror("Failed to remove notification FIFO");
+        }
         printf("Disconnected from server\n");
         return 0;
 

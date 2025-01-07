@@ -29,6 +29,7 @@ SubscriptionMap* create_subscription_map();
 void free_subscription_map(SubscriptionMap* map);
 int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path);
 int remove_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path);
+void remove_all_subscriptions(SubscriptionMap* map, const char* notif_pipe_path); 
 void notify_subscribers(SubscriptionMap* map, const char* key, const char* message);
 
 #endif // SUBSCRIPTION_H

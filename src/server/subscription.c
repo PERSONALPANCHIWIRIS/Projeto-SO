@@ -154,3 +154,29 @@ void notify_subscribers(SubscriptionMap* map, const char* key, const char* messa
 
     pthread_mutex_unlock(&map->lock[index]);
 }
+
+void remove_all_subscriptions(SubscriptionMap* map, const char* notif_pipe_path) {
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        pthread_mutex_lock(&map->lock[i]);
+        Subscription* sub = map->table[i];
+        while (sub != NULL) {
+            SubscriberNode* node = sub->subscribers;
+            SubscriberNode* prev = NULL;
+            while (node != NULL) {
+                if (strcmp(node->notif_pipe_path, notif_pipe_path) == 0) {
+                    if (prev) {
+                        prev->next = node->next;
+                    } else {
+                        sub->subscribers = node->next;
+                    }
+                    free(node);
+                    break; // Remove apenas uma ocorrência por chave
+                }
+                prev = node;
+                node = node->next;
+            }
+            sub = sub->next;
+        }
+        pthread_mutex_unlock(&map->lock[i]);
+    }
+}

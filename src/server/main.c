@@ -17,7 +17,7 @@ int current_threads = 0;
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct ClientNode {
-    int client_fd;                // File descriptor do cliente
+    char req_pipe_path[256];      // Caminho do pipe de pedidos
     char resp_pipe_path[256];     // Caminho do pipe de resposta
     char notif_pipe_path[256];    // Caminho do pipe de notificação
     struct ClientNode* next;      // Próximo cliente na fila
@@ -30,6 +30,8 @@ typedef struct ClientQueue {
     pthread_cond_t cond;          // Condição para notificar threads
 } ClientQueue;
 
+SubscriptionMap* subscription_map; // Mapa de subscrições (declaração)
+
 // Inicializar a fila de clientes
 void init_client_queue(ClientQueue* queue) {
     queue->front = queue->rear = NULL;
@@ -38,11 +40,12 @@ void init_client_queue(ClientQueue* queue) {
 }
 
 // Enfileirar um cliente na fila
-void enqueue_client(ClientQueue* queue, int client_fd, const char* resp_pipe_path, const char* notif_pipe_path) {
+void enqueue_client(ClientQueue* queue, const char* req_pipe_path, const char* resp_pipe_path, const char* notif_pipe_path) {
     ClientNode* new_node = (ClientNode*)malloc(sizeof(ClientNode));
-    new_node->client_fd = client_fd;
+    strncpy(new_node->req_pipe_path, req_pipe_path, sizeof(new_node->req_pipe_path) - 1);
     strncpy(new_node->resp_pipe_path, resp_pipe_path, sizeof(new_node->resp_pipe_path) - 1);
     strncpy(new_node->notif_pipe_path, notif_pipe_path, sizeof(new_node->notif_pipe_path) - 1);
+    new_node->req_pipe_path[sizeof(new_node->req_pipe_path) - 1] = '\0';
     new_node->resp_pipe_path[sizeof(new_node->resp_pipe_path) - 1] = '\0';
     new_node->notif_pipe_path[sizeof(new_node->notif_pipe_path) - 1] = '\0';
     new_node->next = NULL;
@@ -98,14 +101,23 @@ void destroy_client_queue(ClientQueue* queue) {
 }
 
 //OPERACOES COM CLIENTES
-bool process_client_request(Message* msg) {
+bool process_client_request(Message* msg, const char* resp_pipe_path, const char* notif_pipe_path,
+ int client_notif_fd, int client_req_fd) {
     switch (msg->opcode) {
         // case 1:
         //     // Processar a conexão
         //     return false;
-
         case 2:
             // Processar desconexão
+            int client_resp_fd = open(resp_pipe_path, O_WRONLY);
+            //Envia a mensagem de desconexão
+            if (client_resp_fd != -1) {
+                write(client_resp_fd, "Server returned 2 for operation: <disconnect>\n", 47);
+                close(client_resp_fd);
+            }
+            remove_all_subscriptions(subscription_map, notif_pipe_path);
+            close(client_notif_fd); //Fecha o de notificações
+            close(client_req_fd); //Fecha o de pedidos
             return true;
         case 3:
             // Processar subscrição
@@ -121,66 +133,32 @@ bool process_client_request(Message* msg) {
 }
 
 //Le a mensagem do cliente e processa-a
-void process_client(int fd_register) {
+void process_client(const char* req_pipe_path, const char* resp_pipe_path, const char* notif_pipe_path) {
     bool done = false;
+    int client_notif_fd = open(notif_pipe_path, O_WRONLY);//Abre o pipe de notificações para este cliente
     while(!done){
         Message msg;
-
         // Ler pedido do cliente (bloqueante)
-        ssize_t bytes_read = read(fd_register, &msg, sizeof(msg));
+        int client_req_fd = open(req_pipe_path, O_RDONLY);
+        ssize_t bytes_read = read(client_req_fd, &msg, sizeof(msg));
         if (bytes_read <= 0) {
-            perror("Erro ao ler do FIFO de registro");
+            perror("Erro ao ler do FIFO de request");
             break;
         }
 
         // Processar o pedido do cliente
-        done = process_client_request(&msg);
+        done = process_client_request(&msg, resp_pipe_path, notif_pipe_path, client_notif_fd, client_req_fd);
     }
 }
-
-// void *thread_client_queue(void *arg) {
-//     ClientQueue *local_q = (ClientQueue *)arg;
-
-//     //loop infinito que irá parar quando a queue estiver vazia
-//     while (1) {
-//         pthread_mutex_lock(&client_lock);
-
-//         //caso em que a queue está vazia
-//         if (is_client_queue_empty(local_q)) {
-//             pthread_mutex_unlock(&client_lock);
-//             return NULL;
-//         }
-
-//         //retira um ficheiro da queue
-//         int client_fd = dequeue(local_q);
-//         pthread_mutex_unlock(&client_lock);
-
-//         if (client_fd == NULL) {
-//             return NULL;
-//         }
-
-//         //chama a função de processamento do ficheiro
-//         process_client(client_fd);
-//     }
-// }
 
 void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server_fifo,
  int max_threads, int backup_limit, pthread_t *threads) {
     // pthread_t client_threads[S];
-    int fd_register = open(server_fifo, O_RDONLY);
+    int fd_register = open(server_fifo, O_RDONLY); //Abre a de registo do lado do server
     if (fd_register == -1) {
         perror("Erro ao abrir FIFO de registro");
         return;
     }
-
-    // //inicializa as threads para os clientes
-    // for (int i = 0; i < S; i++){
-    //     if (pthread_create(&client_threads[i], NULL, thread_client_queue, 
-    //                                          (void *) &fd_register)) {
-    //         fprintf(stderr, "Failed to create thread\n");
-    //         continue;
-    //     }   
-    // }
 
     //inicializa as threads para a função thread_queue
     for (int i = 0; i < max_threads; i++){
@@ -195,7 +173,7 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
     //como para 1.1 só vem um cliente, obvio por agora
         Message msg;
         // Ler pedido do proximo cliente (bloqueante)
-        //Le do fifo de registo
+        //Le do fifo de registo a mensagem de connect
         ssize_t bytes_read = read(fd_register, &msg, sizeof(msg));
         if (bytes_read > 0){
             if (msg.opcode == 1) { // Conexão de cliente
@@ -207,11 +185,7 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
                 sscanf(msg.data, "%s|%s|%s", req_pipe_path, resp_pipe_path, notif_pipe_path);
 
                 // Enfileira o cliente na fila de clientes
-                //identificador do cliente é o file descriptor
-                int client_fd = open(req_pipe_path, O_RDONLY);
-                if (client_fd != -1) {
-                    enqueue_client(pool_clients, client_fd, resp_pipe_path, notif_pipe_path);
-                }
+                enqueue_client(pool_clients, req_pipe_path, resp_pipe_path, notif_pipe_path);
                 int client_resp_fd = open(resp_pipe_path, O_WRONLY);
                 if (client_resp_fd != -1) {
                     //Isto para a operação connect
@@ -224,11 +198,8 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
         // Verifica e processa a fila de clientes
         if (!is_client_queue_empty(pool_clients)) {
             ClientNode* temp = dequeue_client(pool_clients);
-            int client_fd = temp->client_fd;
-            if (client_fd != -1) {
-                process_client(client_fd);
-                free(temp);
-            }
+            process_client(temp->req_pipe_path, temp->resp_pipe_path, temp->notif_pipe_path);
+            free(temp);
         }
 
     //}
@@ -241,7 +212,6 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
     close(fd_register);
 }   
 
-SubscriptionMap* subscription_map; // Mapa de subscrições
 //------------------------------------------------------------ CODE:
 int main(int argc, char* argv[]) {
 
