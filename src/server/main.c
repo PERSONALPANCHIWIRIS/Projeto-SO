@@ -30,6 +30,7 @@ typedef struct ClientQueue {
     pthread_cond_t cond;          // Condição para notificar threads
 } ClientQueue;
 
+SubscriptionMap* subscription_map;
 
 // Inicializar a fila de clientes
 void init_client_queue(ClientQueue* queue) {
@@ -105,10 +106,11 @@ void destroy_client_queue(ClientQueue* queue) {
 //OPERACOES COM CLIENTES--------------------------------------------------------------------------------------------------------------
 bool process_client_request(Message* msg, const char* resp_pipe_path, const char* notif_pipe_path,
  int client_notif_fd, int client_req_fd) {
+    int client_resp_fd = open(resp_pipe_path, O_WRONLY);
     switch (msg->opcode) {
+        
         case 2:
             // Processar desconexão
-            int client_resp_fd = open(resp_pipe_path, O_WRONLY);
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
                 //Sucesso
@@ -127,28 +129,26 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
 
         case 3:
             // Processar subscrição
-            int client_resp_fd = open(resp_pipe_path, O_WRONLY);
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 0 for operation: <subscribe>\n", 47);    
+                write(client_resp_fd, "Server returned 0 for operation: <subscribe>\n", 46);    
             }
             else{
-                write(client_resp_fd, "Server returned 1 for operation: <subscribe>\n", 47);
+                write(client_resp_fd, "Server returned 1 for operation: <subscribe>\n", 46);
             }
             close(client_resp_fd);
 
             int existed = add_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed == 1){
-                write(client_resp_fd, "Server returned 0 for operation: <subscribe>\n", 47);
+                write(client_resp_fd, "Server returned 0 for operation: <subscribe>\n", 46);
             }
             else{
-                write(client_resp_fd, "Server returned 1 for operation: <subscribe>\n", 47);
+                write(client_resp_fd, "Server returned 1 for operation: <subscribe>\n", 46);
             }
             return false;
 
         case 4:
             // Processar cancelamento de subscrição
-            int client_resp_fd = open(resp_pipe_path, O_WRONLY);
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
                 write(client_resp_fd, "Server returned 0 for operation: <unsubscribe>\n", 47);    
@@ -158,8 +158,8 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             }
             close(client_resp_fd);
 
-            int existed = remove_subscription(subscription_map, msg->key, notif_pipe_path);
-            if (existed == 1){
+            int existed_unsub = remove_subscription(subscription_map, msg->key, notif_pipe_path);
+            if (existed_unsub == 1){
                 write(client_resp_fd, "Server returned 0 for operation: <unsubscribe>\n", 47);
             }
             else{

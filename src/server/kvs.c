@@ -4,7 +4,7 @@
 #include "kvs.h"
 #include "string.h"
 #include "subscription.h"
-
+#include <stdio.h>
 
 //------------------------------------------------------------ CODE:
 // Hash function based on key initial.

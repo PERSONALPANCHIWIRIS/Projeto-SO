@@ -15,18 +15,18 @@
 bool stop_notifications = false;
 
 void read_notifications(void* arg) {
-  int notif_pipe = (int) arg;
+  int *notif_pipe = (int *) arg;
   char buffer[256];
   //Ciclo infinito smepre à espera de notificações
   while (!stop_notifications){
-    ssize_t bytes_read = read(notif_pipe, buffer, sizeof(buffer));
+    ssize_t bytes_read = read(*notif_pipe, buffer, sizeof(buffer));
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
       fprintf(stdout, "%s\n", buffer);
     }
   }
-  close(notif_pipe);
-  return NULL; 
+  close(*notif_pipe);
+  return; 
 }
 
 
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
 
   // Thread para ler as notificações
   pthread_t notif_thread;
-  pthread_create(&notif_thread, NULL, (void*) read_notifications, (void*) notif_pipe);
+  pthread_create(&notif_thread, NULL, (void*) read_notifications, (void*) &notif_pipe);
 
   // TODO open pipes
   if (kvs_connect(req_pipe_path, resp_pipe_path, argv[2], notif_pipe_path, &notif_pipe) != 0) {
