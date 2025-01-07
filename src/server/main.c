@@ -103,31 +103,46 @@ void destroy_client_queue(ClientQueue* queue) {
     pthread_cond_destroy(&queue->cond);
 }
 
-//OPERACOES COM CLIENTES
+//OPERACOES COM CLIENTES--------------------------------------------------------------------------------------------------------------
 bool process_client_request(Message* msg, const char* resp_pipe_path, const char* notif_pipe_path,
  int client_notif_fd, int client_req_fd) {
     switch (msg->opcode) {
-        // case 1:
-        //     // Processar a conexão
-        //     return false;
         case 2:
             // Processar desconexão
             int client_resp_fd = open(resp_pipe_path, O_WRONLY);
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 2 for operation: <disconnect>\n", 47);
-                close(client_resp_fd);
+                write(client_resp_fd, "Server returned 2 for operation: <disconnect>\n", 47);    
             }
+            close(client_resp_fd);
+
             remove_all_subscriptions(subscription_map, notif_pipe_path);
             close(client_notif_fd); //Fecha o de notificações
             close(client_req_fd); //Fecha o de pedidos
             return true;
+
         case 3:
             // Processar subscrição
+            int client_resp_fd = open(resp_pipe_path, O_WRONLY);
+            //Envia a mensagem de desconexão
+            if (client_resp_fd != -1) {
+                write(client_resp_fd, "Server returned 3 for operation: <subscribe>\n", 47);    
+            }
+            close(client_resp_fd);
+
+            add_subscription(subscription_map, msg->key, notif_pipe_path);
             return false;
 
         case 4:
             // Processar cancelamento de subscrição
+            int client_resp_fd = open(resp_pipe_path, O_WRONLY);
+            //Envia a mensagem de desconexão
+            if (client_resp_fd != -1) {
+                write(client_resp_fd, "Server returned 4 for operation: <unsubscribe>\n", 47);    
+            }
+            close(client_resp_fd);
+
+            remove_subscription(subscription_map, msg->key, notif_pipe_path);
             return false;
 
         default:
@@ -173,7 +188,7 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
     }
 
     //while (1){  //Loop infinito a espera de clientes
-    //como para 1.1 só vem um cliente, obvio por agora
+    //como para 1.1 só vem um cliente, obviar por agora
         Message msg;
         // Ler pedido do proximo cliente (bloqueante)
         //Le do fifo de registo a mensagem de connect

@@ -53,7 +53,7 @@ int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path) {
   if (write(client_req_fd, &msg, sizeof(msg)) < 0) {
     perror("Error sending disconnect message");
     close(client_req_fd);
-    return -1;
+    return 1;
   }
   close(client_req_fd);
 
@@ -75,32 +75,61 @@ int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path) {
   return 0;
 }
 
-int kvs_subscribe(const char* key) {
+int kvs_subscribe(const char* key, const char* req_pipe_path, const char* resp_pipe_path) {
   Message msg;
   msg.opcode = 3;
   strncpy(msg.key, key, sizeof(msg.key));
 
-  if (write(server_fd, &msg, sizeof(msg)) < 0) {
+  int client_req_fd = open(req_pipe_path, O_WRONLY);
+  if (write(client_req_fd, &msg, sizeof(msg)) < 0) {
     perror("Error sending subscription message");
-    close(server_fd);
+    close(client_req_fd);
     return -1;
   }
+  close(client_req_fd);
+
+  //Le a mesnagem de subscrição com sucesso
+  int client_resp_fd = open(resp_pipe_path, O_RDONLY);
+  char response[MAX_STRING_SIZE];
+  ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
+  if (bytes_read <= 0) {
+    perror("Erro ao ler do FIFO de response");
+    close(client_resp_fd);
+    return -1;
+  }
+  close(client_resp_fd);
+  response[bytes_read] = '\0'; //Garantir que acaba em \0
+  fprintf(stdout, "%s\n", response);
 
   return 0;
 }
 
-int kvs_unsubscribe(const char* key) {
+int kvs_unsubscribe(const char* key, const char* req_pipe_path, const char* resp_pipe_path) {
   Message msg;
   msg.opcode = 4;
   strncpy(msg.key, key, sizeof(msg.key));
 
-  if (write(server_fd, &msg, sizeof(msg)) < 0) {
+  int client_req_fd = open(req_pipe_path, O_WRONLY);
+  if (write(client_req_fd, &msg, sizeof(msg)) < 0) {
     perror("Error sending unsubscription message");
-    close(server_fd);
+    close(client_req_fd);
     return -1;
   }
+  close(client_req_fd);
 
-  close(server_fd);
+  //Le a mesnagem de unsubscribe com sucesso
+  int client_resp_fd = open(resp_pipe_path, O_RDONLY);
+  char response[MAX_STRING_SIZE];
+  ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
+  if (bytes_read <= 0) {
+    perror("Erro ao ler do FIFO de response");
+    close(client_resp_fd);
+    return -1;
+  }
+  close(client_resp_fd);
+  response[bytes_read] = '\0'; //Garantir que acaba em \0
+  fprintf(stdout, "%s\n", response);
+  
   return 0;
 }
 

@@ -25,12 +25,12 @@ int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path);
 /// @param key Key to be subscribed
 /// @return 1 if the key was subscribed successfully (key existing), 0 otherwise.
 
-int kvs_subscribe(const char* key);
+int kvs_subscribe(const char* key, const char* req_pipe_path, const char* resp_pipe_path);
 
 /// Remove a subscription for a key
 /// @param key Key to be unsubscribed
 /// @return 0 if the key was unsubscribed successfully  (subscription existed and was removed), 1 otherwise.
 
-int kvs_unsubscribe(const char* key);
+int kvs_unsubscribe(const char* key, const char* req_pipe_path, const char* resp_pipe_path);
  
 #endif  // CLIENT_API_H

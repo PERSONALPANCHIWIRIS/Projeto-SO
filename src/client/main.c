@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
           continue;
         }
          
-        if (kvs_subscribe(keys[0])) {
+        if (kvs_subscribe(keys[0], req_pipe_path, resp_pipe_path)) {
             fprintf(stderr, "Command subscribe failed\n");
         }
 
@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
           continue;
         }
          
-        if (kvs_unsubscribe(keys[0])) {
+        if (kvs_unsubscribe(keys[0], req_pipe_path, resp_pipe_path)) {
             fprintf(stderr, "Command subscribe failed\n");
         }
 
