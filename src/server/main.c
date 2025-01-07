@@ -52,6 +52,7 @@ void enqueue_client(ClientQueue* queue, const char* req_pipe_path, const char* r
 
     pthread_mutex_lock(&queue->mutex);
     if (queue->rear == NULL) {
+        //Primeiro cliente
         queue->front = queue->rear = new_node;
     } else {
         queue->rear->next = new_node;
@@ -65,12 +66,14 @@ void enqueue_client(ClientQueue* queue, const char* req_pipe_path, const char* r
 ClientNode* dequeue_client(ClientQueue* queue) {
     pthread_mutex_lock(&queue->mutex);
     while (queue->front == NULL) {
+        //Isto é, para uma queue vazia, espera 
         pthread_cond_wait(&queue->cond, &queue->mutex);
     }
     ClientNode* temp = queue->front;
     //int client_fd = temp->client_fd;
     queue->front = queue->front->next;
     if (queue->front == NULL) {
+        //Se a fila ficar vazia
         queue->rear = NULL;
     }
     //free(temp);
@@ -190,8 +193,8 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
                 if (client_resp_fd != -1) {
                     //Isto para a operação connect
                     write(client_resp_fd, "Server returned 1 for operation: <connect>\n", 44);
-                    close(client_resp_fd);
                 }
+                close(client_resp_fd);
             }
         }
 
@@ -254,8 +257,7 @@ int main(int argc, char* argv[]) {
     Queue pool_jobs;
     //Tira a pool de tarefas relacionadas com a diretoria
     iterates_files(argv[1], backup_limit, &pool_jobs);
-    ClientQueue pool_clients;
-    //Inicializa a pool de tarefas relacionadas com os clientes
+    ClientQueue pool_clients; //Inicializa a pool de tarefas relacionadas com os clientes
     //tarefa anfitriã
     master_task(&pool_jobs, &pool_clients, server_fifo, max_threads, backup_limit, threads);
 

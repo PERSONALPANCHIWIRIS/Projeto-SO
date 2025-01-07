@@ -31,16 +31,16 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
   int client_resp_fd = open(resp_pipe_path, O_RDONLY);
   char response[MAX_STRING_SIZE];
   ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
+
   if (bytes_read <= 0) {
-    perror("Erro ao ler do FIFO de request");
+    perror("Erro ao ler do FIFO de response");
     close(client_resp_fd);
     return -1;
   }
+
   close(client_resp_fd);
   response[bytes_read] = '\0'; //Garantir que acaba em \0
   fprintf(stdout, "%s\n", response);
-
-
   return 0;
 }
  
@@ -62,7 +62,7 @@ int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path) {
   char response[MAX_STRING_SIZE];
   ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
   if (bytes_read <= 0) {
-    perror("Erro ao ler do FIFO de request");
+    perror("Erro ao ler do FIFO de response");
     close(client_resp_fd);
     return -1;
   }
