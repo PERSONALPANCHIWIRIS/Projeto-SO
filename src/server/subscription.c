@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <ctype.h>
 #include <unistd.h>
+#include "kvs.h"
 
 //Função de hash baseada na da hashtable dos jobs
 static int hash(const char* key) {
@@ -48,7 +49,15 @@ void free_subscription_map(SubscriptionMap* map) {
 
 int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path) {
     int index = hash(key);
-    if (index == -1) return -1;
+    if (index == -1) return 1;
+
+    // Verifica se existe no KVS
+    char* value = read_pair(kvs_table, key);
+    if (value == NULL) {
+        //Não existe
+        return 1;
+    }
+    free(value);
 
     pthread_mutex_lock(&map->lock[index]);
 
@@ -70,12 +79,11 @@ int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pi
             node->next = sub->subscribers;
             sub->subscribers = node; //Adiciona o subscritor à frente
             pthread_mutex_unlock(&map->lock[index]);
-            return 0;
+            return 0; //Nao existia
         }
         //Procura a key
         sub = sub->next;
     }
-
     sub = malloc(sizeof(Subscription));
     strcpy(sub->key, key);
     sub->subscribers = malloc(sizeof(SubscriberNode));
@@ -93,6 +101,14 @@ int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pi
 int remove_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path) {
     int index = hash(key);
     if (index == -1) return -1;
+
+    // Verifica se existe no KVS
+    char* value = read_pair(kvs_table, key);
+    if (value == NULL) {
+        //Não existe
+        return 1;
+    }
+    free(value);
 
     pthread_mutex_lock(&map->lock[index]);
 
@@ -112,7 +128,7 @@ int remove_subscription(SubscriptionMap* map, const char* key, const char* notif
                     }
                     free(node);
                     pthread_mutex_unlock(&map->lock[index]);
-                    return 0;
+                    return 0; //Existia
                 }
                 //Continuamos iteradamente
                 prev = node;
@@ -122,7 +138,7 @@ int remove_subscription(SubscriptionMap* map, const char* key, const char* notif
         //Procura a key
         sub = sub->next;
     }
-    //Se não existir, só retorna -1
+    //Se não existir, só retorna 1
     pthread_mutex_unlock(&map->lock[index]);
     return 1;
 }
@@ -141,7 +157,6 @@ void notify_subscribers(SubscriptionMap* map, const char* key, const char* messa
                 int fd = open(node->notif_pipe_path, O_WRONLY);
                 if (fd != -1) {
                     //Escreve a mensagem no pipe
-                    fprintf(stdout, "Sending notification to %s: %s\n", node->notif_pipe_path, message);
                     write(fd, message, strlen(message));
                     close(fd);
                 }

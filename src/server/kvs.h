@@ -10,12 +10,15 @@ typedef struct KeyNode {
     char *key;
     char *value;
     struct KeyNode *next;
+    
 } KeyNode;
 
 typedef struct HashTable {
     KeyNode *table[TABLE_SIZE];
     pthread_mutex_t kvs_lock[TABLE_SIZE];
 } HashTable;
+
+extern HashTable* kvs_table;
 
 /// Creates a new event hash table.
 /// @return Newly created hash table, NULL on failure

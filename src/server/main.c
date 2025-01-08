@@ -130,41 +130,35 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
         case 3:
             // Processar subscrição
             //Envia a mensagem de desconexão
-            if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 0 for operation: 3\n", 36);    
+            if (client_resp_fd == -1) {
+                write(client_resp_fd, "Server returned 1 for operation: 3\n", 36);    
+            }
+            
+            int existed = add_subscription(subscription_map, msg->key, notif_pipe_path);
+            if (existed == 1){
+                write(client_resp_fd, "Server returned 1 for operation: 3\n", 36);
             }
             else{
                 write(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
             }
             close(client_resp_fd);
-
-            int existed = add_subscription(subscription_map, msg->key, notif_pipe_path);
-            if (existed == 1){
-                write(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
-            }
-            else{
-                write(client_resp_fd, "Server returned 1 for operation: 3\n", 36);
-            }
             return false;
 
         case 4:
             // Processar cancelamento de subscrição
             //Envia a mensagem de desconexão
-            if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 0 for operation: 4\n", 36);    
+            if (client_resp_fd == -1) {//Erro
+                write(client_resp_fd, "Server returned 1 for operation: 4\n", 36);    
             }
-            else{
+
+            int existed_unsub = remove_subscription(subscription_map, msg->key, notif_pipe_path);
+            if (existed_unsub == 1){ //Não existia
+                write(client_resp_fd, "Server returned 1 for operation: 4\n", 36);
+            }
+            else{ //Existia
                 write(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
             }
             close(client_resp_fd);
-
-            int existed_unsub = remove_subscription(subscription_map, msg->key, notif_pipe_path);
-            if (existed_unsub == 1){
-                write(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
-            }
-            else{
-                write(client_resp_fd, "Server returned 1 for operation: 4\n", 36);
-            }
             return false;
 
         default:
@@ -196,7 +190,7 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
     // pthread_t client_threads[S];
 
     //Trata dos jobs relacionados com a diretoria (com threads)
-    iterates_files(dir_path, backup_limit, max_threads, threads);
+    //iterates_files(dir_path, backup_limit, max_threads, threads);
 
     //while (1){  //Loop infinito a espera de clientes
     //como para 1.1 só vem um cliente, obviar por agora
@@ -206,9 +200,6 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
             perror("Error opening FIFO");
             return;
         }
-
-        //Trata dos jobs relacionados com a diretoria (com threads)
-        //iterates_files(dir_path, backup_limit, max_threads, threads);
 
         // Ler pedido do proximo cliente (bloqueante)
         //Le do fifo de registo a mensagem de connect
@@ -235,6 +226,9 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                 close(client_resp_fd);
             }
         }
+
+        //Trata dos jobs relacionados com a diretoria (com threads)
+        iterates_files(dir_path, backup_limit, max_threads, threads);
 
         // Verifica e processa a fila de clientes
         if (!is_client_queue_empty(pool_clients)) {

@@ -9,7 +9,7 @@
 #include "operations.h"
 #include "dirmanager.h"
 
-static struct HashTable* kvs_table = NULL;
+HashTable* kvs_table = NULL;
 
 
 //------------------------------------------------------------ CODE:

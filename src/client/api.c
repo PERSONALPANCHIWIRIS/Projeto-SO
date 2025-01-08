@@ -68,7 +68,7 @@ int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path) {
   }
   close(client_resp_fd);
   response[bytes_read] = '\0'; //Garantir que acaba em \0
-  fprintf(stdout, "%s\n", response);
+  fprintf(stdout, "%s", response);
 
   //Depois de estar todo fechado do lado do server, fecha no cliente
   close(server_fd);
@@ -99,7 +99,7 @@ int kvs_subscribe(const char* key, const char* req_pipe_path, const char* resp_p
   }
   close(client_resp_fd);
   response[bytes_read] = '\0'; //Garantir que acaba em \0
-  fprintf(stdout, "%s\n", response);
+  fprintf(stdout, "%s", response);
 
   return 0;
 }
@@ -128,7 +128,7 @@ int kvs_unsubscribe(const char* key, const char* req_pipe_path, const char* resp
   }
   close(client_resp_fd);
   response[bytes_read] = '\0'; //Garantir que acaba em \0
-  fprintf(stdout, "%s\n", response);
+  fprintf(stdout, "%s", response);
   
   return 0;
 }

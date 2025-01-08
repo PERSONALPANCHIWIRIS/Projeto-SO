@@ -17,7 +17,7 @@ bool stop_notifications = false;
 void read_notifications(void* arg) {
   int *notif_pipe = (int *) arg;
   char buffer[256];
-  //Ciclo infinito smepre à espera de notificações
+  //Ciclo infinito sempre à espera de notificações
   while (!stop_notifications){
     ssize_t bytes_read = read(*notif_pipe, buffer, sizeof(buffer));
     if (bytes_read > 0) {
