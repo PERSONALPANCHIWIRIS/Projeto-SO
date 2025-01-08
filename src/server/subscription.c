@@ -141,6 +141,7 @@ void notify_subscribers(SubscriptionMap* map, const char* key, const char* messa
                 int fd = open(node->notif_pipe_path, O_WRONLY);
                 if (fd != -1) {
                     //Escreve a mensagem no pipe
+                    fprintf(stdout, "Sending notification to %s: %s\n", node->notif_pipe_path, message);
                     write(fd, message, strlen(message));
                     close(fd);
                 }

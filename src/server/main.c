@@ -114,11 +114,11 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
                 //Sucesso
-                write(client_resp_fd, "Server returned 0 for operation: <disconnect>\n", 47);    
+                write(client_resp_fd, "Server returned 0 for operation: 2\n", 36);    
             }
             else{
                 //Erro
-                write(client_resp_fd, "Server returned 1 for operation: <disconnect>\n", 47);
+                write(client_resp_fd, "Server returned 1 for operation: 2\n", 36);
             }
             close(client_resp_fd);
 
@@ -131,19 +131,19 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             // Processar subscrição
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 0 for operation: <subscribe>\n", 46);    
+                write(client_resp_fd, "Server returned 0 for operation: 3\n", 36);    
             }
             else{
-                write(client_resp_fd, "Server returned 1 for operation: <subscribe>\n", 46);
+                write(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
             }
             close(client_resp_fd);
 
             int existed = add_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed == 1){
-                write(client_resp_fd, "Server returned 0 for operation: <subscribe>\n", 46);
+                write(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
             }
             else{
-                write(client_resp_fd, "Server returned 1 for operation: <subscribe>\n", 46);
+                write(client_resp_fd, "Server returned 1 for operation: 3\n", 36);
             }
             return false;
 
@@ -151,19 +151,19 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             // Processar cancelamento de subscrição
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
-                write(client_resp_fd, "Server returned 0 for operation: <unsubscribe>\n", 47);    
+                write(client_resp_fd, "Server returned 0 for operation: 4\n", 36);    
             }
             else{
-                write(client_resp_fd, "Server returned 1 for operation: <unsubscribe>\n", 47);
+                write(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
             }
             close(client_resp_fd);
 
             int existed_unsub = remove_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed_unsub == 1){
-                write(client_resp_fd, "Server returned 0 for operation: <unsubscribe>\n", 47);
+                write(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
             }
             else{
-                write(client_resp_fd, "Server returned 1 for operation: <unsubscribe>\n", 47);
+                write(client_resp_fd, "Server returned 1 for operation: 4\n", 36);
             }
             return false;
 
@@ -192,26 +192,33 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
 }
 
 void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server_fifo,
- int max_threads, int backup_limit, pthread_t *threads) {
+ int max_threads, int backup_limit, pthread_t *threads, const char* dir_path) {
     // pthread_t client_threads[S];
-    int fd_register = open(server_fifo, O_RDONLY); //Abre a de registo do lado do server
-    if (fd_register == -1) {
-        perror("Error opening FIFO");
-        return;
-    }
-
     //inicializa as threads para a função thread_queue
-    for (int i = 0; i < max_threads; i++){
-        if (pthread_create(&threads[i], NULL, thread_queue, 
-                                             (void *) &pool_jobs)) {
-            fprintf(stderr, "Failed to create thread\n");
-            continue;
-        }   
-    }
+    
+    // for (int i = 0; i < max_threads; i++){
+    //     if (pthread_create(&threads[i], NULL, thread_queue, 
+    //                                          (void *) &pool_jobs)) {
+    //         fprintf(stderr, "Failed to create thread\n");
+    //         continue;
+    //     }   
+    // }
+
+    //Trata dos jobs relacionados com a diretoria (com threads)
+    iterates_files(dir_path, backup_limit, max_threads, threads);
 
     //while (1){  //Loop infinito a espera de clientes
     //como para 1.1 só vem um cliente, obviar por agora
         Message msg;
+        int fd_register = open(server_fifo, O_RDONLY); //Abre a de registo do lado do server
+        if (fd_register == -1) {
+            perror("Error opening FIFO");
+            return;
+        }
+
+        //Trata dos jobs relacionados com a diretoria (com threads)
+        //iterates_files(dir_path, backup_limit, max_threads, threads);
+
         // Ler pedido do proximo cliente (bloqueante)
         //Le do fifo de registo a mensagem de connect
         ssize_t bytes_read = read(fd_register, &msg, sizeof(msg));
@@ -222,17 +229,17 @@ void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server
                 char notif_pipe_path[256];
 
                 // Tira o caminho das pipes do cliente
-                sscanf(msg.data, "%s|%s|%s", req_pipe_path, resp_pipe_path, notif_pipe_path);
+                sscanf(msg.data, " %255[^|]| %255[^|]| %255[^|]", req_pipe_path, resp_pipe_path, notif_pipe_path);
 
                 // Enfileira o cliente na fila de clientes
                 enqueue_client(pool_clients, req_pipe_path, resp_pipe_path, notif_pipe_path);
                 int client_resp_fd = open(resp_pipe_path, O_WRONLY);
                 if (client_resp_fd != -1) {
                     //Isto para a operação connect
-                    write(client_resp_fd, "Server returned 0 for operation: <connect>\n", 44);
+                    write(client_resp_fd, "Server returned 0 for operation: 1\n", 34);
                 }
                 else{
-                    write(client_resp_fd, "Server returned 1 for operation: <connect>\n", 44);
+                    write(client_resp_fd, "Server returned 1 for operation: 1\n", 34);
                 }
                 close(client_resp_fd);
             }
@@ -283,6 +290,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Remove FIFO de registo se existir
+    unlink(argv[4]);
+
     const char *server_fifo = argv[4];
     if (mkfifo(server_fifo, 0666) == -1) {
         perror("Failed to create FIFO");
@@ -294,12 +304,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    const char* dir_path = argv[1];
     Queue pool_jobs;
     //Tira a pool de tarefas relacionadas com a diretoria
-    iterates_files(argv[1], backup_limit, &pool_jobs);
+    //iterates_files(argv[1], backup_limit, &pool_jobs);
+    //fprintf(stdout, "Size of pool_jobs: %d\n", get_queue_size(&pool_jobs));
     ClientQueue pool_clients; //Inicializa a pool de tarefas relacionadas com os clientes
     //tarefa anfitriã
-    master_task(&pool_jobs, &pool_clients, server_fifo, max_threads, backup_limit, threads);
+    master_task(&pool_jobs, &pool_clients, server_fifo, max_threads, backup_limit, threads, dir_path);
 
     //esperamos que todas as threads terminem
     for (int i = 0; i < max_threads; i++) {

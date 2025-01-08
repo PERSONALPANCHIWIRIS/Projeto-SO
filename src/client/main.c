@@ -48,6 +48,11 @@ int main(int argc, char* argv[]) {
   strncat(resp_pipe_path, argv[1], strlen(argv[1]) * sizeof(char));
   strncat(notif_pipe_path, argv[1], strlen(argv[1]) * sizeof(char));
 
+  //Caso existirem antes de serem criados
+  unlink(req_pipe_path);
+  unlink(resp_pipe_path);
+  unlink(notif_pipe_path);
+
   // Criação dos named pipes
   if (mkfifo(req_pipe_path, 0666) == -1) {
     perror("Failed to create request FIFO");
@@ -67,7 +72,7 @@ int main(int argc, char* argv[]) {
   // Abrir o FIFO de notificações
   int notif_pipe = open(notif_pipe_path, O_RDONLY | O_NONBLOCK);
   if (notif_pipe == -1) {
-    perror("Erro ao abrir FIFO de notificações");
+    perror("Error opening notification FIFO");
     return 1;
   }
 
