@@ -191,18 +191,9 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
     }
 }
 
-void master_task(Queue* pool_jobs, ClientQueue* pool_clients, const char* server_fifo,
+void master_task(ClientQueue* pool_clients, const char* server_fifo,
  int max_threads, int backup_limit, pthread_t *threads, const char* dir_path) {
     // pthread_t client_threads[S];
-    //inicializa as threads para a função thread_queue
-    
-    // for (int i = 0; i < max_threads; i++){
-    //     if (pthread_create(&threads[i], NULL, thread_queue, 
-    //                                          (void *) &pool_jobs)) {
-    //         fprintf(stderr, "Failed to create thread\n");
-    //         continue;
-    //     }   
-    // }
 
     //Trata dos jobs relacionados com a diretoria (com threads)
     iterates_files(dir_path, backup_limit, max_threads, threads);
@@ -305,13 +296,10 @@ int main(int argc, char* argv[]) {
     }
 
     const char* dir_path = argv[1];
-    Queue pool_jobs;
     //Tira a pool de tarefas relacionadas com a diretoria
-    //iterates_files(argv[1], backup_limit, &pool_jobs);
-    //fprintf(stdout, "Size of pool_jobs: %d\n", get_queue_size(&pool_jobs));
     ClientQueue pool_clients; //Inicializa a pool de tarefas relacionadas com os clientes
     //tarefa anfitriã
-    master_task(&pool_jobs, &pool_clients, server_fifo, max_threads, backup_limit, threads, dir_path);
+    master_task(&pool_clients, server_fifo, max_threads, backup_limit, threads, dir_path);
 
     //esperamos que todas as threads terminem
     for (int i = 0; i < max_threads; i++) {
