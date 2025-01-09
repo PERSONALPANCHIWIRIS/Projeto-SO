@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/select.h>
 #include <stdbool.h>
+#include <poll.h>
 
 #include "parser.h"
 #include "src/client/api.h"
@@ -16,32 +17,11 @@
 bool stop_notifications = false;
 
 void read_notifications(void* arg) {
+  //const char *notif_pipe_path = (const char *) arg;
   int *notif_pipe = (int *) arg;
+  //int notif_pipe = open(notif_pipe_path, O_RDONLY);
   char buffer[256];
   //Ciclo infinito sempre à espera de notificações
-  // while (!stop_notifications) {
-  //       fd_set read_fds;
-  //       FD_ZERO(&read_fds);
-  //       FD_SET(*notif_pipe, &read_fds);
-
-  //       // Wait until notif_pipe has data
-  //       int retval = select(*notif_pipe + 1, &read_fds, NULL, NULL, NULL);
-  //       if (retval == -1) {
-  //           perror("select() error");
-  //           break; // Exit the loop on select error
-  //       } else if (retval > 0 && FD_ISSET(*notif_pipe, &read_fds)) {
-  //           // Data is available, read it
-  //           ssize_t bytes_read = read_all(*notif_pipe, buffer, sizeof(buffer) - 1, NULL);
-  //           if (bytes_read > 0) {
-  //               buffer[sizeof(buffer)] = '\0'; // Null-terminate the buffer
-  //               fprintf(stdout, "%s", buffer);
-  //           } else if (bytes_read == -1) {
-  //               perror("Failed to read from pipe");
-  //               break; // Exit the loop on read error
-  //           }
-  //       }
-  //   }
-
   while (!stop_notifications){
     ssize_t bytes_read = read(*notif_pipe, buffer, sizeof(buffer) - 1);
     if (bytes_read > 0) {
@@ -100,6 +80,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  //int notif_pipe = 0;
   // Thread para ler as notificações
   pthread_t notif_thread;
   pthread_create(&notif_thread, NULL, (void*) read_notifications, (void*) &notif_pipe);

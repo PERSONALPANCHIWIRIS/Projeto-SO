@@ -10,7 +10,7 @@
 #define TABLE_SIZE 26
 
 typedef struct SubscriberNode {
-    char notif_pipe_path[MAX_PIPE_PATH];
+    char notif_pipe_path[MAX_PIPE_PATH];    
     struct SubscriberNode* next;
 } SubscriberNode;
 

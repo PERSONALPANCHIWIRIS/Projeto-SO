@@ -237,8 +237,8 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                 int client_resp_fd = open(resp_pipe_path, O_WRONLY);
                 if (client_resp_fd != -1) {
                     //Isto para a operação connect
-                    //char response[2] = {'1', '0'}
-                    write_all(client_resp_fd, "10", 2);
+                    char response[2] = {'1', '0'};
+                    write_all(client_resp_fd, response, 2);
                     //write_all(client_resp_fd, "Server returned 0 for operation: 1\n", 34);
                 }
                 else{
