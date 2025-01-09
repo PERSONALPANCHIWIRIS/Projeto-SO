@@ -237,9 +237,6 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
             }   
         }
 
-        //Trata dos jobs relacionados com a diretoria (com threads) e coloca-os na queue
-        //iterates_files(dir_path, backup_limit, max_threads, threads);
-
         // Verifica e processa a fila de clientes
         if (!is_client_queue_empty(pool_clients)) {
             ClientNode* temp = dequeue_client(pool_clients);
