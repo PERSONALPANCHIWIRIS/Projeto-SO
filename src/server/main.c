@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <semaphore.h>
 
 #include "constants.h"
 #include "parser.h"
@@ -17,6 +18,8 @@ int current_threads = 0;
 Queue q;
 
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t client_cond = PTHREAD_COND_INITIALIZER;
+sem_t client_sem;
 
 typedef struct ClientNode {
     char req_pipe_path[256];      // Caminho do pipe de pedidos
@@ -63,6 +66,9 @@ void enqueue_client(ClientQueue* queue, const char* req_pipe_path, const char* r
     }
     pthread_cond_signal(&queue->cond); // Notificar threads esperando na fila
     pthread_mutex_unlock(&queue->mutex);
+
+    //Signal para o semaforo
+    sem_post(&client_sem);
 }
 
 // Desenfileirar um cliente da fila
@@ -203,23 +209,60 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
     }
 }
 
+void *thread_client(void *arg) {
+    ClientQueue* pool_clients = (ClientQueue*) arg;
+    while (1) {
+        sem_wait(&client_sem);
+
+        pthread_mutex_lock(&client_lock);
+         while (is_client_queue_empty(pool_clients)) {
+            pthread_cond_wait(&client_cond, &client_lock);
+        }
+
+        ClientNode* temp = dequeue_client(pool_clients);
+        if (temp == NULL) {
+            pthread_mutex_unlock(&client_lock);
+            continue;
+        }
+        pthread_mutex_unlock(&client_lock);
+        process_client(temp->req_pipe_path, temp->resp_pipe_path, temp->notif_pipe_path);
+        free(temp);
+    }
+}
+
 void master_task(ClientQueue* pool_clients, const char* server_fifo,
  int max_threads, int backup_limit, pthread_t *threads, DIR* dir) {
-    // pthread_t client_threads[S];
+    pthread_t client_threads[S];
+
+    ThreadQueueArgs thread_args = {&q, dir, backup_limit};
+
+    for (int i = 0; i < max_threads; i++){
+        if (pthread_create(&threads[i], NULL, thread_queue, 
+                                                (void *) &thread_args)) {
+            fprintf(stderr, "Failed to create thread\n");
+            continue;
+        }   
+    }
+
+    for (int i = 0; i < S; i++){
+        if (pthread_create(&client_threads[i], NULL, thread_client, 
+                                             (void *) pool_clients)) {
+            fprintf(stderr, "Failed to create thread\n");
+            continue;
+        }   
+    }
 
     //Trata dos jobs relacionados com a diretoria (com threads)
     //iterates_files(dir_path, backup_limit, max_threads, threads);
 
-    //while (1){  //Loop infinito a espera de clientes
-    //como para 1.1 só vem um cliente, obviar por agora
+    int fd_register = open(server_fifo, O_RDONLY); //Abre a de registo do lado do server
+    if (fd_register == -1) {
+        perror("Error opening FIFO");
+        return;
+    }
+    while (1){  //Loop infinito a espera de clientes
         Message msg;
-        int fd_register = open(server_fifo, O_RDONLY); //Abre a de registo do lado do server
-        if (fd_register == -1) {
-            perror("Error opening FIFO");
-            return;
-        }
-
-        // Ler pedido do proximo cliente (bloqueante)
+        //Ler pedido do proximo cliente (bloqueante)
         //Le do fifo de registo a mensagem de connect
         ssize_t bytes_read = read_all(fd_register, &msg, sizeof(msg), NULL);
         if (bytes_read > 0){
@@ -246,36 +289,38 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                     write_all(client_resp_fd, response, 2);
                     //write_all(client_resp_fd, "Server returned 1 for operation: 1\n", 34);
                 }
+                // Sinaliza que já podem ser processados clientes
+                pthread_cond_broadcast(&client_cond);
                 close(client_resp_fd);
             }
         }
         // Inicializa a estrutura de argumentos para as threads
-        ThreadQueueArgs thread_args = {&q, dir, backup_limit};
+        // ThreadQueueArgs thread_args = {&q, dir, backup_limit};
 
         //inicializa as threads para a função thread_queue
-        for (int i = 0; i < max_threads; i++){
-            if (pthread_create(&threads[i], NULL, thread_queue, 
-                                                 (void *) &thread_args)) {
-                fprintf(stderr, "Failed to create thread\n");
-                continue;
-            }   
-        }
+        // for (int i = 0; i < max_threads; i++){
+        //     if (pthread_create(&threads[i], NULL, thread_queue, 
+        //                                          (void *) &thread_args)) {
+        //         fprintf(stderr, "Failed to create thread\n");
+        //         continue;
+        //     }   
+        // }
 
         // Verifica e processa a fila de clientes
-        if (!is_client_queue_empty(pool_clients)) {
-            ClientNode* temp = dequeue_client(pool_clients);
-            process_client(temp->req_pipe_path, temp->resp_pipe_path, temp->notif_pipe_path);
-            free(temp);
-        }
+        // if (!is_client_queue_empty(pool_clients)) {
+        //     ClientNode* temp = dequeue_client(pool_clients);
+        //     process_client(temp->req_pipe_path, temp->resp_pipe_path, temp->notif_pipe_path);
+        //     free(temp);
+        // }
 
-    //}
+    }
     
     // //espera que todos os backups terminem antes de terminar
     // for (int i = 0; i < backup_limit; i++){
     //     wait(NULL);
     // }
 
-    close(fd_register);
+    //close(fd_register);
 }   
 
 //------------------------------------------------------------ CODE:
@@ -325,6 +370,10 @@ int main(int argc, char* argv[]) {
     ClientQueue pool_clients; //Inicializa a pool de tarefas relacionadas com os clientes
     //inicializa a pool de tarefas dos jobs
     DIR *dir = iterates_files(dir_path, backup_limit);
+
+    //inicializa o semaforo
+    sem_init(&client_sem, 0, 0);
+
     //tarefa anfitriã
     master_task(&pool_clients, server_fifo, max_threads, backup_limit, threads, dir);
 
@@ -335,6 +384,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    sem_destroy(&client_sem);
+    pthread_mutex_destroy(&client_lock);
+    pthread_cond_destroy(&client_cond);
     //libertamos a memoria alocada da hash table
     kvs_terminate();
     free_subscription_map(subscription_map);
