@@ -25,9 +25,15 @@ typedef struct Queue {
     int backup_limit;
 } Queue;
 
+typedef struct {
+    Queue* queue;
+    DIR* dir;
+    int backup_limit;
+} ThreadQueueArgs;
+
 extern Queue q;
 
-void iterates_files(const char *dir_path, int backup_limit);
+DIR* iterates_files(const char *dir_path, int backup_limit);
 void manage_file(char *file_path, int backup_limit);
 void *thread_queue(void *arg);
 void init_queue(Queue* q);

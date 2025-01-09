@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include "kvs.h"
+#include "../common/io.h"
 
 //Função de hash baseada na da hashtable dos jobs
 static int hash(const char* key) {
@@ -156,8 +157,10 @@ void notify_subscribers(SubscriptionMap* map, const char* key, const char* messa
             while (node != NULL) {
                 int fd = open(node->notif_pipe_path, O_WRONLY);
                 if (fd != -1) {
+                    char message_new_line[256];
                     //Escreve a mensagem no pipe
-                    write(fd, message, strlen(message));
+                    snprintf(message_new_line, sizeof(message_new_line), "%s\n", message);
+                    write_all(fd, message_new_line, strlen(message_new_line));
                     close(fd);
                 }
                 node = node->next;

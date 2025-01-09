@@ -71,7 +71,7 @@ char* dequeue(Queue* queue) {
 
 
 //entramos na diretoria e iteramos pelos ficheiros
-void iterates_files(const char *dir_path, int backup_limit) {
+DIR* iterates_files(const char *dir_path, int backup_limit) {
     DIR *dir;
     struct dirent *entry;
     char filepath[MAX_JOB_FILE_NAME_SIZE];
@@ -85,7 +85,7 @@ void iterates_files(const char *dir_path, int backup_limit) {
     //abrimos a diretoria
     if ((dir = opendir(dir_path)) == NULL){
         fprintf(stderr, "Failed to open directory\n");
-        return;
+        return NULL;
     }
 
     while ((entry = readdir(dir)) != NULL){
@@ -132,7 +132,7 @@ void iterates_files(const char *dir_path, int backup_limit) {
 
     //closedir(dir);
 
-    return;
+    return dir;
 }
 
 
@@ -142,7 +142,11 @@ void iterates_files(const char *dir_path, int backup_limit) {
  * um ficheiro, sempre que possível.
  */
 void *thread_queue(void *arg) {
-    Queue *local_q = (Queue *)arg;
+    //Queue *local_q = (Queue *)arg;
+    ThreadQueueArgs* args = (ThreadQueueArgs*)arg;
+    Queue* local_q = args->queue;
+    DIR* dir = args->dir;
+    int backup_limit = args->backup_limit;
 
     //loop infinito que irá parar quando a queue estiver vazia
     while (1) {
@@ -165,6 +169,14 @@ void *thread_queue(void *arg) {
         //chama a função de processamento do ficheiro
         manage_file(file_path, local_q->backup_limit);
     }
+
+    //espera que todos os backups terminem antes de fechar a diretoria
+    for (int i = 0; i < backup_limit; i++){
+        wait(NULL);
+    }
+
+    closedir(dir);
+
 }
 
 

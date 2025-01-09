@@ -9,6 +9,7 @@
 #include "operations.h"
 #include "dirmanager.h"
 #include "../client/api.h"
+#include "../common/io.h"
 #include "subscription.h"
 
 int current_backup = 0;
@@ -32,6 +33,7 @@ typedef struct ClientQueue {
 } ClientQueue;
 
 SubscriptionMap* subscription_map;
+
 
 // Inicializar a fila de clientes
 void init_client_queue(ClientQueue* queue) {
@@ -115,11 +117,11 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
                 //Sucesso
-                write(client_resp_fd, "Server returned 0 for operation: 2\n", 36);    
+                write_all(client_resp_fd, "Server returned 0 for operation: 2\n", 36);    
             }
             else{
                 //Erro
-                write(client_resp_fd, "Server returned 1 for operation: 2\n", 36);
+                write_all(client_resp_fd, "Server returned 1 for operation: 2\n", 36);
             }
             close(client_resp_fd);
 
@@ -132,15 +134,15 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             // Processar subscrição
             //Envia a mensagem de desconexão
             if (client_resp_fd == -1) {
-                write(client_resp_fd, "Server returned 1 for operation: 3\n", 36);    
+                write_all(client_resp_fd, "Server returned 1 for operation: 3\n", 36);    
             }
             
             int existed = add_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed == 1){
-                write(client_resp_fd, "Server returned 1 for operation: 3\n", 36);
+                write_all(client_resp_fd, "Server returned 1 for operation: 3\n", 36);
             }
             else{
-                write(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
+                write_all(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
             }
             close(client_resp_fd);
             return false;
@@ -149,15 +151,15 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             // Processar cancelamento de subscrição
             //Envia a mensagem de desconexão
             if (client_resp_fd == -1) {//Erro
-                write(client_resp_fd, "Server returned 1 for operation: 4\n", 36);    
+                write_all(client_resp_fd, "Server returned 1 for operation: 4\n", 36);    
             }
 
             int existed_unsub = remove_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed_unsub == 1){ //Não existia
-                write(client_resp_fd, "Server returned 1 for operation: 4\n", 36);
+                write_all(client_resp_fd, "Server returned 1 for operation: 4\n", 36);
             }
             else{ //Existia
-                write(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
+                write_all(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
             }
             close(client_resp_fd);
             return false;
@@ -187,7 +189,7 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
 }
 
 void master_task(ClientQueue* pool_clients, const char* server_fifo,
- int max_threads, int backup_limit, pthread_t *threads) {
+ int max_threads, int backup_limit, pthread_t *threads, DIR* dir) {
     // pthread_t client_threads[S];
 
     //Trata dos jobs relacionados com a diretoria (com threads)
@@ -219,19 +221,21 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                 int client_resp_fd = open(resp_pipe_path, O_WRONLY);
                 if (client_resp_fd != -1) {
                     //Isto para a operação connect
-                    write(client_resp_fd, "Server returned 0 for operation: 1\n", 34);
+                    write_all(client_resp_fd, "Server returned 0 for operation: 1\n", 34);
                 }
                 else{
-                    write(client_resp_fd, "Server returned 1 for operation: 1\n", 34);
+                    write_all(client_resp_fd, "Server returned 1 for operation: 1\n", 34);
                 }
                 close(client_resp_fd);
             }
         }
+        // Inicializa a estrutura de argumentos para as threads
+        ThreadQueueArgs thread_args = {&q, dir, backup_limit};
 
         //inicializa as threads para a função thread_queue
         for (int i = 0; i < max_threads; i++){
             if (pthread_create(&threads[i], NULL, thread_queue, 
-                                                 (void *) &q)) {
+                                                 (void *) &thread_args)) {
                 fprintf(stderr, "Failed to create thread\n");
                 continue;
             }   
@@ -246,10 +250,10 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
 
     //}
     
-    //espera que todos os backups terminem antes de terminar
-    for (int i = 0; i < backup_limit; i++){
-        wait(NULL);
-    }
+    // //espera que todos os backups terminem antes de terminar
+    // for (int i = 0; i < backup_limit; i++){
+    //     wait(NULL);
+    // }
 
     close(fd_register);
 }   
@@ -300,9 +304,9 @@ int main(int argc, char* argv[]) {
     //Tira a pool de tarefas relacionadas com a diretoria
     ClientQueue pool_clients; //Inicializa a pool de tarefas relacionadas com os clientes
     //inicializa a pool de tarefas dos jobs
-    iterates_files(dir_path, backup_limit);
+    DIR *dir = iterates_files(dir_path, backup_limit);
     //tarefa anfitriã
-    master_task(&pool_clients, server_fifo, max_threads, backup_limit, threads);
+    master_task(&pool_clients, server_fifo, max_threads, backup_limit, threads, dir);
 
     //esperamos que todas as threads terminem
     for (int i = 0; i < max_threads; i++) {

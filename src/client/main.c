@@ -19,10 +19,10 @@ void read_notifications(void* arg) {
   char buffer[256];
   //Ciclo infinito sempre à espera de notificações
   while (!stop_notifications){
-    ssize_t bytes_read = read(*notif_pipe, buffer, sizeof(buffer));
+    ssize_t bytes_read = read(*notif_pipe, buffer, sizeof(buffer) - 1);
     if (bytes_read > 0) {
       buffer[bytes_read] = '\0';
-      fprintf(stdout, "%s\n", buffer);
+      fprintf(stdout, "%s", buffer);
     }
   }
   close(*notif_pipe);

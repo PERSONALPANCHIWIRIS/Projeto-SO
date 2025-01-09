@@ -1,6 +1,7 @@
 #include "api.h"
 #include "src/common/constants.h"
 #include "src/common/protocol.h"
+#include "src/common/io.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
@@ -25,7 +26,7 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
   msg.opcode = 1;
   snprintf(msg.data, sizeof(msg.data), "%s|%s|%s", req_pipe_path, resp_pipe_path, notif_pipe_path);
   //Envia os dados dos pipes ao servidor para que este possa comunicar com o cliente
-  write(server_fd, &msg, sizeof(msg));
+  write_all(server_fd, &msg, sizeof(msg));
 
   //Le a mesnagem de connect com sucesso
   int client_resp_fd = open(resp_pipe_path, O_RDONLY);
@@ -50,7 +51,7 @@ int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path) {
   
   //Comunca com o server e envia a mensagem de disconnect
   int client_req_fd = open(req_pipe_path, O_WRONLY);
-  if (write(client_req_fd, &msg, sizeof(msg)) < 0) {
+  if (write_all(client_req_fd, &msg, sizeof(msg)) < 0) {
     perror("Error sending disconnect message");
     close(client_req_fd);
     return 1;
@@ -81,7 +82,7 @@ int kvs_subscribe(const char* key, const char* req_pipe_path, const char* resp_p
   strncpy(msg.key, key, sizeof(msg.key));
 
   int client_req_fd = open(req_pipe_path, O_WRONLY);
-  if (write(client_req_fd, &msg, sizeof(msg)) < 0) {
+  if (write_all(client_req_fd, &msg, sizeof(msg)) < 0) {
     perror("Error sending subscription message");
     close(client_req_fd);
     return -1;
@@ -110,7 +111,7 @@ int kvs_unsubscribe(const char* key, const char* req_pipe_path, const char* resp
   strncpy(msg.key, key, sizeof(msg.key));
 
   int client_req_fd = open(req_pipe_path, O_WRONLY);
-  if (write(client_req_fd, &msg, sizeof(msg)) < 0) {
+  if (write_all(client_req_fd, &msg, sizeof(msg)) < 0) {
     perror("Error sending unsubscription message");
     close(client_req_fd);
     return -1;
