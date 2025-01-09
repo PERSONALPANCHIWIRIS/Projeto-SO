@@ -110,18 +110,21 @@ void destroy_client_queue(ClientQueue* queue) {
 bool process_client_request(Message* msg, const char* resp_pipe_path, const char* notif_pipe_path,
  int client_notif_fd, int client_req_fd) {
     int client_resp_fd = open(resp_pipe_path, O_WRONLY);
-    switch (msg->opcode) {
-        
+    switch (msg->opcode) {       
         case 2:
             // Processar desconexão
             //Envia a mensagem de desconexão
             if (client_resp_fd != -1) {
                 //Sucesso
-                write_all(client_resp_fd, "Server returned 0 for operation: 2\n", 36);    
+                char response[2] = {2, 0};
+                write_all(client_resp_fd, response, 2);
+                //write_all(client_resp_fd, "Server returned 0 for operation: 2\n", 36);    
             }
             else{
                 //Erro
-                write_all(client_resp_fd, "Server returned 1 for operation: 2\n", 36);
+                char response[2] = {2, 1};
+                write_all(client_resp_fd, response, 2);
+                //write_all(client_resp_fd, "Server returned 1 for operation: 2\n", 36);
             }
             close(client_resp_fd);
 
@@ -134,15 +137,21 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             // Processar subscrição
             //Envia a mensagem de desconexão
             if (client_resp_fd == -1) {
-                write_all(client_resp_fd, "Server returned 1 for operation: 3\n", 36);    
+                char response_sub[2] = {3, 1};
+                write_all(client_resp_fd, response_sub, 2);
+                //write_all(client_resp_fd, "Server returned 1 for operation: 3\n", 36);    
             }
             
             int existed = add_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed == 1){
-                write_all(client_resp_fd, "Server returned 1 for operation: 3\n", 36);
+                char response_sub[2] = {3, 1};
+                write_all(client_resp_fd, response_sub, 2);
+                //write_all(client_resp_fd, "Server returned 1 for operation: 3\n", 36);
             }
             else{
-                write_all(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
+                char response_sub[2] = {3, 0};
+                write_all(client_resp_fd, response_sub, 2);
+                //write_all(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
             }
             close(client_resp_fd);
             return false;
@@ -151,15 +160,21 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             // Processar cancelamento de subscrição
             //Envia a mensagem de desconexão
             if (client_resp_fd == -1) {//Erro
-                write_all(client_resp_fd, "Server returned 1 for operation: 4\n", 36);    
+                char response_unsub[2] = {4, 1};
+                write_all(client_resp_fd, response_unsub, 2);
+                //write_all(client_resp_fd, "Server returned 1 for operation: 4\n", 36);    
             }
 
             int existed_unsub = remove_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed_unsub == 1){ //Não existia
-                write_all(client_resp_fd, "Server returned 1 for operation: 4\n", 36);
+                char response_unsub[2] = {4, 1};
+                write_all(client_resp_fd, response_unsub, 2);
+                //write_all(client_resp_fd, "Server returned 1 for operation: 4\n", 36);
             }
             else{ //Existia
-                write_all(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
+                char response_unsub[2] = {4, 0};
+                write_all(client_resp_fd, response_unsub, 2);
+                //write_all(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
             }
             close(client_resp_fd);
             return false;
@@ -177,7 +192,7 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
         Message msg;
         // Ler pedido do cliente (bloqueante)
         int client_req_fd = open(req_pipe_path, O_RDONLY);
-        ssize_t bytes_read = read(client_req_fd, &msg, sizeof(msg));
+        ssize_t bytes_read = read_all(client_req_fd, &msg, sizeof(msg), NULL);
         if (bytes_read <= 0) {
             perror("Error reading request from client");
             break;
@@ -206,25 +221,30 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
 
         // Ler pedido do proximo cliente (bloqueante)
         //Le do fifo de registo a mensagem de connect
-        ssize_t bytes_read = read(fd_register, &msg, sizeof(msg));
+        ssize_t bytes_read = read_all(fd_register, &msg, sizeof(msg), NULL);
         if (bytes_read > 0){
             if (msg.opcode == 1) { // Conexão de cliente
-                char req_pipe_path[256];
-                char resp_pipe_path[256];
-                char notif_pipe_path[256];
+                char req_pipe_path[40];
+                char resp_pipe_path[40];
+                char notif_pipe_path[40];
 
                 // Tira o caminho das pipes do cliente
-                sscanf(msg.data, " %255[^|]| %255[^|]| %255[^|]", req_pipe_path, resp_pipe_path, notif_pipe_path);
+                //sscanf(msg.data, " %255[^|]| %255[^|]| %255[^|]", req_pipe_path, resp_pipe_path, notif_pipe_path);
+                sscanf(msg.data, "%40s %40s %40s", req_pipe_path, resp_pipe_path, notif_pipe_path);
 
                 // Enfileira o cliente na fila de clientes
                 enqueue_client(pool_clients, req_pipe_path, resp_pipe_path, notif_pipe_path);
                 int client_resp_fd = open(resp_pipe_path, O_WRONLY);
                 if (client_resp_fd != -1) {
                     //Isto para a operação connect
-                    write_all(client_resp_fd, "Server returned 0 for operation: 1\n", 34);
+                    //char response[2] = {'1', '0'}
+                    write_all(client_resp_fd, "10", 2);
+                    //write_all(client_resp_fd, "Server returned 0 for operation: 1\n", 34);
                 }
                 else{
-                    write_all(client_resp_fd, "Server returned 1 for operation: 1\n", 34);
+                    char response[2] = {'1', '1'};
+                    write_all(client_resp_fd, response, 2);
+                    //write_all(client_resp_fd, "Server returned 1 for operation: 1\n", 34);
                 }
                 close(client_resp_fd);
             }
