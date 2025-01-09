@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 int server_fd;
+int intr_api = 0;
 
 int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char const* server_pipe_path,
                 char const* notif_pipe_path, int* notif_pipe) {
@@ -34,7 +35,7 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
   ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
 
   if (bytes_read <= 0) {
-    perror("Erro ao ler do FIFO de response");
+    perror("Error reading from response FIFO");
     close(client_resp_fd);
     return -1;
   }
@@ -63,7 +64,7 @@ int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path) {
   char response[MAX_STRING_SIZE];
   ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
   if (bytes_read <= 0) {
-    perror("Erro ao ler do FIFO de response");
+    perror("Error reading from response FIFO");
     close(client_resp_fd);
     return -1;
   }
@@ -94,7 +95,7 @@ int kvs_subscribe(const char* key, const char* req_pipe_path, const char* resp_p
   char response[MAX_STRING_SIZE];
   ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
   if (bytes_read <= 0) {
-    perror("Erro ao ler do FIFO de response");
+    perror("Error reading from response FIFO");
     close(client_resp_fd);
     return -1;
   }
@@ -123,7 +124,7 @@ int kvs_unsubscribe(const char* key, const char* req_pipe_path, const char* resp
   char response[MAX_STRING_SIZE];
   ssize_t bytes_read = read(client_resp_fd, response, sizeof(response));
   if (bytes_read <= 0) {
-    perror("Erro ao ler do FIFO de response");
+    perror("Error reading from response FIFO");
     close(client_resp_fd);
     return -1;
   }
