@@ -18,7 +18,7 @@ int current_threads = 0;
 Queue q;
 
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t client_cond = PTHREAD_COND_INITIALIZER;
+//pthread_cond_t client_cond = PTHREAD_COND_INITIALIZER;
 sem_t client_sem;
 
 typedef struct ClientNode {
@@ -215,9 +215,9 @@ void *thread_client(void *arg) {
         sem_wait(&client_sem);
 
         pthread_mutex_lock(&client_lock);
-         while (is_client_queue_empty(pool_clients)) {
-            pthread_cond_wait(&client_cond, &client_lock);
-        }
+        // while (is_client_queue_empty(pool_clients)) {
+        //     pthread_cond_wait(&client_cond, &client_lock);
+        // }
 
         ClientNode* temp = dequeue_client(pool_clients);
         if (temp == NULL) {
@@ -290,7 +290,7 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                     //write_all(client_resp_fd, "Server returned 1 for operation: 1\n", 34);
                 }
                 // Sinaliza que já podem ser processados clientes
-                pthread_cond_broadcast(&client_cond);
+                //pthread_cond_broadcast(&client_cond);
                 close(client_resp_fd);
             }
         }
@@ -318,10 +318,10 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
     // //espera que todos os backups terminem antes de terminar
     // for (int i = 0; i < backup_limit; i++){
     //     wait(NULL);
-    // }
 
     //close(fd_register);
-}   
+    }
+//}   
 
 //------------------------------------------------------------ CODE:
 int main(int argc, char* argv[]) {
@@ -386,7 +386,7 @@ int main(int argc, char* argv[]) {
 
     sem_destroy(&client_sem);
     pthread_mutex_destroy(&client_lock);
-    pthread_cond_destroy(&client_cond);
+    //pthread_cond_destroy(&client_cond);
     //libertamos a memoria alocada da hash table
     kvs_terminate();
     free_subscription_map(subscription_map);

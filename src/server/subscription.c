@@ -50,13 +50,13 @@ void free_subscription_map(SubscriptionMap* map) {
 
 int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path) {
     int index = hash(key);
-    if (index == -1) return 1;
+    // if (index == -1) return 1;
 
     // Verifica se existe no KVS
     char* value = read_pair(kvs_table, key);
     if (value == NULL) {
         //Não existe
-        return 1;
+        return 0;
     }
     free(value);
 
@@ -80,7 +80,7 @@ int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pi
             node->next = sub->subscribers;
             sub->subscribers = node; //Adiciona o subscritor à frente
             pthread_mutex_unlock(&map->lock[index]);
-            return 0; //Nao existia
+            return 1; //Nao existia subscriçaõ
         }
         //Procura a key
         sub = sub->next;
@@ -96,20 +96,18 @@ int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pi
     map->table[index] = sub;
 
     pthread_mutex_unlock(&map->lock[index]);
-    return 0;
+    return 1;
 }
 
 int remove_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path) {
     int index = hash(key);
-    if (index == -1) return -1;
+    //if (index == -1) return -1;
 
     // Verifica se existe no KVS
-    char* value = read_pair(kvs_table, key);
-    if (value == NULL) {
+    if (read_pair(kvs_table, key) == NULL) {
         //Não existe
         return 1;
     }
-    free(value);
 
     pthread_mutex_lock(&map->lock[index]);
 

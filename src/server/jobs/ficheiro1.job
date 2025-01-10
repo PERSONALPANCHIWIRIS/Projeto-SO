@@ -2,7 +2,7 @@ WRITE [(c1,v1)(BANANAS,bananas)(fjje,dois)(projeto,SO)]
 SHOW
 WAIT 1000
 DELETE [f]
-DELETE [c1]
+#DELETE [c1]
 SHOW
 READ [fjje]
 BACKUP
