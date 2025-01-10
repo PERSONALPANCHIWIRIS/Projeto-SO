@@ -499,6 +499,7 @@ int main(int argc, char* argv[]) {
     //tarefa anfitriã
     master_task(&pool_clients, server_fifo, max_threads, backup_limit, threads, dir);
 
+    //Tecnicamente, nunca ha de entrar aqui
     //esperamos que todas as threads terminem
     for (int i = 0; i < max_threads; i++) {
         if (threads[i] != 0) {
