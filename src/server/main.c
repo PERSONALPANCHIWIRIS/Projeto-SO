@@ -4,6 +4,9 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <semaphore.h>
+#include <stdatomic.h>
+#include <signal.h>
+#include <errno.h>
 
 #include "constants.h"
 #include "parser.h"
@@ -16,15 +19,19 @@
 int current_backup = 0;
 int current_threads = 0;
 Queue q;
+volatile sig_atomic_t sigusr1_received = 0;
 
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 //pthread_cond_t client_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t signal_lock = PTHREAD_MUTEX_INITIALIZER;
 sem_t client_sem;
 
 typedef struct ClientNode {
     char req_pipe_path[256];      // Caminho do pipe de pedidos
     char resp_pipe_path[256];     // Caminho do pipe de resposta
     char notif_pipe_path[256];    // Caminho do pipe de notificação
+    int notif_pipe_fd;
+    int req_pipe_fd;
     struct ClientNode* next;      // Próximo cliente na fila
 } ClientNode;
 
@@ -37,6 +44,30 @@ typedef struct ClientQueue {
 
 SubscriptionMap* subscription_map;
 
+
+// void handle_sigusr1(int sig) {
+//     if (sig == SIGUSR1) {
+//         //fprintf(stdout, "Received SIGUSR1\n");
+//         sigusr1_received = 1;
+//     }
+// }
+
+void* signal_handler_thread(void* arg) {
+    fprintf(stderr, "THREAD\n");
+    sigset_t* sigset = (sigset_t*)arg;
+    int sig;
+    while (1) {
+        // Wait for SIGUSR1
+        if (sigwait(sigset, &sig) == 0 && sig == SIGUSR1) {
+            fprintf(stderr, "PRINT\n");
+            pthread_mutex_lock(&signal_lock);
+            sigusr1_received = 1; // Signal received, set the flag
+            pthread_mutex_unlock(&signal_lock);
+            fprintf(stderr, "NUMERO: %d\n", sigusr1_received);
+        }
+    }
+    return NULL;
+}
 
 // Inicializar a fila de clientes
 void init_client_queue(ClientQueue* queue) {
@@ -191,25 +222,39 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
 }
 
 //Le a mensagem do cliente e processa-a
-void process_client(const char* req_pipe_path, const char* resp_pipe_path, const char* notif_pipe_path) {
+void process_client(const char* req_pipe_path, const char* resp_pipe_path, const char* notif_pipe_path, ClientNode* client) {
     bool done = false;
     int client_notif_fd = open(notif_pipe_path, O_WRONLY);//Abre o pipe de notificações para este cliente
+    client->notif_pipe_fd = client_notif_fd;
     while(!done){
         Message msg;
         // Ler pedido do cliente (bloqueante)
         int client_req_fd = open(req_pipe_path, O_RDONLY);
+        client->req_pipe_fd = client_req_fd;
         ssize_t bytes_read = read_all(client_req_fd, &msg, sizeof(msg), NULL);
         if (bytes_read <= 0) {
+            if(errno == EBADF){
+                break;
+            }
             perror("Error reading request from client");
             break;
         }
 
         // Processar o pedido do cliente
-        done = process_client_request(&msg, resp_pipe_path, notif_pipe_path, client_notif_fd, client_req_fd);
+        //A necessidade de associar os fd à estrutura do cliente, vem de, no momento quando o SIGUSR1 é recebido,
+        //ser necessário fechar os pipes de notificação e de resposta para todos os clientes
+        //done = process_client_request(&msg, resp_pipe_path, notif_pipe_path, client_notif_fd, client_req_fd);
+        done = process_client_request(&msg, resp_pipe_path, notif_pipe_path, client->notif_pipe_fd, client->req_pipe_fd);
     }
 }
 
 void *thread_client(void *arg) {
+    // Bloquear o sinal SIGUSR1 nesta thread
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR1);
+    pthread_sigmask(SIG_BLOCK, &set, NULL);
+
     ClientQueue* pool_clients = (ClientQueue*) arg;
     while (1) {
         sem_wait(&client_sem);
@@ -225,7 +270,7 @@ void *thread_client(void *arg) {
             continue;
         }
         pthread_mutex_unlock(&client_lock);
-        process_client(temp->req_pipe_path, temp->resp_pipe_path, temp->notif_pipe_path);
+        process_client(temp->req_pipe_path, temp->resp_pipe_path, temp->notif_pipe_path, temp);
         free(temp);
     }
 }
@@ -233,6 +278,35 @@ void *thread_client(void *arg) {
 void master_task(ClientQueue* pool_clients, const char* server_fifo,
  int max_threads, int backup_limit, pthread_t *threads, DIR* dir) {
     pthread_t client_threads[S];
+
+    // // Setting up the signal handler
+    // struct sigaction sa;
+    // sa.sa_handler = handle_sigusr1;
+    // sigemptyset(&sa.sa_mask);
+    // sa.sa_flags = 0;
+    // if (sigaction(SIGUSR1, &sa, NULL) == -1) {
+    //     perror("Error setting up SIGUSR1 handler");
+    //     return;
+    // }
+
+    // Signal handling setup
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGUSR1);
+
+    // Block SIGUSR1 in all threads
+    if (pthread_sigmask(SIG_BLOCK, &sigset, NULL) != 0) {
+        perror("Failed to block SIGUSR1 in all threads");
+        return;
+    }
+
+    // Create a dedicated signal handler thread
+    pthread_t sig_thread;
+    if (pthread_create(&sig_thread, NULL, signal_handler_thread, &sigset) != 0) {
+        fprintf(stderr, "THREAD");
+        perror("Failed to create signal handler thread");
+        return;
+    }
 
     ThreadQueueArgs thread_args = {&q, dir, backup_limit};
 
@@ -260,7 +334,55 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
         perror("Error opening FIFO");
         return;
     }
+
     while (1){  //Loop infinito a espera de clientes
+        //pthread_mutex_lock(&signal_lock);
+        if (sigusr1_received == 1){
+            fprintf(stderr, "RECEIVED\n");
+            fprintf(stderr, "NUMERO: %d\n", sigusr1_received);
+            ClientNode* current = pool_clients->front;
+            while (current != NULL) {
+                Message msg;
+                msg.opcode = 2;
+                process_client_request(&msg, current->resp_pipe_path, current->notif_pipe_path, current->notif_pipe_fd, current->req_pipe_fd);
+                current = current->next;
+            }
+
+
+
+            for (int i = 0; i < TABLE_SIZE; i++) {
+                pthread_mutex_lock(&subscription_map->lock[i]);
+                Subscription* sub = subscription_map->table[i];
+                while (sub != NULL) {
+                    Subscription* temp = sub;
+                    sub = sub->next;
+                    SubscriberNode* node = temp->subscribers;
+                    while (node != NULL) {
+                        SubscriberNode* temp_node = node;
+                        node = node->next;
+                        free(temp_node);
+                    }
+                    free(temp);
+                }
+                subscription_map->table[i] = NULL;
+                pthread_mutex_unlock(&subscription_map->lock[i]);
+            }
+
+            // Fechar os FIFOs de notificação e de resposta para todos os clientes
+            // ClientNode* current = pool_clients->front;
+            // while (current != NULL) {
+            //     Message msg;
+            //     msg.opcode = 2;
+            //     process_client_request(&msg, current->resp_pipe_path, current->notif_pipe_path, current->notif_pipe_fd, current->req_pipe_fd);
+            //     current = current->next;
+            // }
+
+            // Reset the signal flag
+            sigusr1_received = 0;
+            fprintf(stderr, "NUMERO DEPOIS: %d\n", sigusr1_received);
+        }
+        //pthread_mutex_unlock(&signal_lock);
+
         Message msg;
         //Ler pedido do proximo cliente (bloqueante)
         //Le do fifo de registo a mensagem de connect
