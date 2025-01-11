@@ -22,7 +22,6 @@ Queue q;
 volatile sig_atomic_t sigusr1_received = 0;
 
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
-//pthread_cond_t client_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t signal_lock = PTHREAD_MUTEX_INITIALIZER;
 sem_t client_sem;
 
@@ -44,26 +43,15 @@ typedef struct ClientQueue {
 
 SubscriptionMap* subscription_map;
 
-
-// void handle_sigusr1(int sig) {
-//     if (sig == SIGUSR1) {
-//         //fprintf(stdout, "Received SIGUSR1\n");
-//         sigusr1_received = 1;
-//     }
-// }
-
 void* signal_handler_thread(void* arg) {
-    fprintf(stderr, "THREAD\n");
     sigset_t* sigset = (sigset_t*)arg;
     int sig;
     while (1) {
         // Wait for SIGUSR1
         if (sigwait(sigset, &sig) == 0 && sig == SIGUSR1) {
-            fprintf(stderr, "PRINT\n");
             pthread_mutex_lock(&signal_lock);
             sigusr1_received = 1; // Signal received, set the flag
             pthread_mutex_unlock(&signal_lock);
-            fprintf(stderr, "NUMERO: %d\n", sigusr1_received);
         }
     }
     return NULL;
@@ -154,14 +142,12 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             if (client_resp_fd != -1) {
                 //Sucesso
                 char response[2] = {2, 0};
-                write_all(client_resp_fd, response, 2);
-                //write_all(client_resp_fd, "Server returned 0 for operation: 2\n", 36);    
+                write_all(client_resp_fd, response, 2);  
             }
             else{
                 //Erro
                 char response[2] = {2, 1};
                 write_all(client_resp_fd, response, 2);
-                //write_all(client_resp_fd, "Server returned 1 for operation: 2\n", 36);
             }
             close(client_resp_fd);
 
@@ -176,19 +162,16 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             if (client_resp_fd == -1) {
                 char response_sub[2] = {3, 1};
                 write_all(client_resp_fd, response_sub, 2);
-                //write_all(client_resp_fd, "Server returned 1 for operation: 3\n", 36);    
             }
             
             int existed = add_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed == 1){
                 char response_sub[2] = {3, 1};
                 write_all(client_resp_fd, response_sub, 2);
-                //write_all(client_resp_fd, "Server returned 1 for operation: 3\n", 36);
             }
             else{
                 char response_sub[2] = {3, 0};
                 write_all(client_resp_fd, response_sub, 2);
-                //write_all(client_resp_fd, "Server returned 0 for operation: 3\n", 36);
             }
             close(client_resp_fd);
             return false;
@@ -198,20 +181,17 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             //Envia a mensagem de desconexão
             if (client_resp_fd == -1) {//Erro
                 char response_unsub[2] = {4, 1};
-                write_all(client_resp_fd, response_unsub, 2);
-                //write_all(client_resp_fd, "Server returned 1 for operation: 4\n", 36);    
+                write_all(client_resp_fd, response_unsub, 2);  
             }
 
             int existed_unsub = remove_subscription(subscription_map, msg->key, notif_pipe_path);
             if (existed_unsub == 1){ //Não existia
                 char response_unsub[2] = {4, 1};
                 write_all(client_resp_fd, response_unsub, 2);
-                //write_all(client_resp_fd, "Server returned 1 for operation: 4\n", 36);
             }
             else{ //Existia
                 char response_unsub[2] = {4, 0};
                 write_all(client_resp_fd, response_unsub, 2);
-                //write_all(client_resp_fd, "Server returned 0 for operation: 4\n", 36);
             }
             close(client_resp_fd);
             return false;
@@ -243,7 +223,6 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
         // Processar o pedido do cliente
         //A necessidade de associar os fd à estrutura do cliente, vem de, no momento quando o SIGUSR1 é recebido,
         //ser necessário fechar os pipes de notificação e de resposta para todos os clientes
-        //done = process_client_request(&msg, resp_pipe_path, notif_pipe_path, client_notif_fd, client_req_fd);
         done = process_client_request(&msg, resp_pipe_path, notif_pipe_path, client->notif_pipe_fd, client->req_pipe_fd);
     }
 }
@@ -260,9 +239,6 @@ void *thread_client(void *arg) {
         sem_wait(&client_sem);
 
         pthread_mutex_lock(&client_lock);
-        // while (is_client_queue_empty(pool_clients)) {
-        //     pthread_cond_wait(&client_cond, &client_lock);
-        // }
 
         ClientNode* temp = dequeue_client(pool_clients);
         if (temp == NULL) {
@@ -279,16 +255,6 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
  int max_threads, int backup_limit, pthread_t *threads, DIR* dir) {
     pthread_t client_threads[S];
 
-    // // Setting up the signal handler
-    // struct sigaction sa;
-    // sa.sa_handler = handle_sigusr1;
-    // sigemptyset(&sa.sa_mask);
-    // sa.sa_flags = 0;
-    // if (sigaction(SIGUSR1, &sa, NULL) == -1) {
-    //     perror("Error setting up SIGUSR1 handler");
-    //     return;
-    // }
-
     // Signal handling setup
     sigset_t sigset;
     sigemptyset(&sigset);
@@ -303,7 +269,6 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
     // Create a dedicated signal handler thread
     pthread_t sig_thread;
     if (pthread_create(&sig_thread, NULL, signal_handler_thread, &sigset) != 0) {
-        fprintf(stderr, "THREAD");
         perror("Failed to create signal handler thread");
         return;
     }
@@ -318,16 +283,13 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
         }   
     }
 
-    for (int i = 0; i < S; i++){
+    for (int i = 0; i < MAX_SESSION_COUNT; i++){
         if (pthread_create(&client_threads[i], NULL, thread_client, 
                                              (void *) pool_clients)) {
             fprintf(stderr, "Failed to create thread\n");
             continue;
         }   
     }
-
-    //Trata dos jobs relacionados com a diretoria (com threads)
-    //iterates_files(dir_path, backup_limit, max_threads, threads);
 
     int fd_register = open(server_fifo, O_RDONLY); //Abre a de registo do lado do server
     if (fd_register == -1) {
@@ -336,10 +298,7 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
     }
 
     while (1){  //Loop infinito a espera de clientes
-        //pthread_mutex_lock(&signal_lock);
         if (sigusr1_received == 1){
-            fprintf(stderr, "RECEIVED\n");
-            fprintf(stderr, "NUMERO: %d\n", sigusr1_received);
             ClientNode* current = pool_clients->front;
             while (current != NULL) {
                 Message msg;
@@ -368,20 +327,9 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                 pthread_mutex_unlock(&subscription_map->lock[i]);
             }
 
-            // Fechar os FIFOs de notificação e de resposta para todos os clientes
-            // ClientNode* current = pool_clients->front;
-            // while (current != NULL) {
-            //     Message msg;
-            //     msg.opcode = 2;
-            //     process_client_request(&msg, current->resp_pipe_path, current->notif_pipe_path, current->notif_pipe_fd, current->req_pipe_fd);
-            //     current = current->next;
-            // }
-
-            // Reset the signal flag
+            // Reset da flag do sinal
             sigusr1_received = 0;
-            fprintf(stderr, "NUMERO DEPOIS: %d\n", sigusr1_received);
         }
-        //pthread_mutex_unlock(&signal_lock);
 
         Message msg;
         //Ler pedido do proximo cliente (bloqueante)
@@ -394,7 +342,6 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                 char notif_pipe_path[40];
 
                 // Tira o caminho das pipes do cliente
-                //sscanf(msg.data, " %255[^|]| %255[^|]| %255[^|]", req_pipe_path, resp_pipe_path, notif_pipe_path);
                 sscanf(msg.data, "%40s %40s %40s", req_pipe_path, resp_pipe_path, notif_pipe_path);
 
                 // Enfileira o cliente na fila de clientes
@@ -404,46 +351,18 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                     //Isto para a operação connect
                     char response[2] = {'1', '0'};
                     write_all(client_resp_fd, response, 2);
-                    //write_all(client_resp_fd, "Server returned 0 for operation: 1\n", 34);
                 }
                 else{
                     char response[2] = {'1', '1'};
                     write_all(client_resp_fd, response, 2);
-                    //write_all(client_resp_fd, "Server returned 1 for operation: 1\n", 34);
                 }
-                // Sinaliza que já podem ser processados clientes
-                //pthread_cond_broadcast(&client_cond);
                 close(client_resp_fd);
             }
         }
-        // Inicializa a estrutura de argumentos para as threads
-        // ThreadQueueArgs thread_args = {&q, dir, backup_limit};
-
-        //inicializa as threads para a função thread_queue
-        // for (int i = 0; i < max_threads; i++){
-        //     if (pthread_create(&threads[i], NULL, thread_queue, 
-        //                                          (void *) &thread_args)) {
-        //         fprintf(stderr, "Failed to create thread\n");
-        //         continue;
-        //     }   
-        // }
-
-        // Verifica e processa a fila de clientes
-        // if (!is_client_queue_empty(pool_clients)) {
-        //     ClientNode* temp = dequeue_client(pool_clients);
-        //     process_client(temp->req_pipe_path, temp->resp_pipe_path, temp->notif_pipe_path);
-        //     free(temp);
-        // }
+    }
 
     }
-    
-    // //espera que todos os backups terminem antes de terminar
-    // for (int i = 0; i < backup_limit; i++){
-    //     wait(NULL);
-
-    //close(fd_register);
-    }
-//}   
+  
 
 //------------------------------------------------------------ CODE:
 int main(int argc, char* argv[]) {
@@ -509,7 +428,6 @@ int main(int argc, char* argv[]) {
 
     sem_destroy(&client_sem);
     pthread_mutex_destroy(&client_lock);
-    //pthread_cond_destroy(&client_cond);
     //libertamos a memoria alocada da hash table
     kvs_terminate();
     free_subscription_map(subscription_map);

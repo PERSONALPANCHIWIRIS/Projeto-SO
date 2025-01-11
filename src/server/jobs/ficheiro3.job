@@ -1,5 +1,5 @@
 BACKUP
-WRITE [(c1,v1)(BANANAS,bananas)(oeifjowef,hehe)(projetos,SO)(nove,catorze)]
+WRITE [(BANANAS,bananas)(oeifjowef,hehe)(projetos,SO)(nove,catorze)]
 SHOW
 BACKUP
 DELETE [f,nove,haha]

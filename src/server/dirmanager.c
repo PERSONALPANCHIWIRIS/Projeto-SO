@@ -115,23 +115,6 @@ DIR* iterates_files(const char *dir_path, int backup_limit) {
     done_reading = true;
     pthread_mutex_unlock(&queue_lock);
 
-
-    //inicializa as threads para a função thread_queue
-    // for (int i = 0; i < max_threads; i++){
-    //     if (pthread_create(&threads[i], NULL, thread_queue, 
-    //                                          (void *) &q)) {
-    //         fprintf(stderr, "Failed to create thread\n");
-    //         continue;
-    //     }   
-    // }
-    
-    // //espera que todos os backups terminem antes de fechar a diretoria
-    // for (int i = 0; i < backup_limit; i++){
-    //     wait(NULL);
-    // }
-
-    //closedir(dir);
-
     return dir;
 }
 

@@ -50,7 +50,6 @@ void free_subscription_map(SubscriptionMap* map) {
 
 int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path) {
     int index = hash(key);
-    // if (index == -1) return 1;
 
     // Verifica se existe no KVS
     char* value = read_pair(kvs_table, key);
@@ -101,7 +100,6 @@ int add_subscription(SubscriptionMap* map, const char* key, const char* notif_pi
 
 int remove_subscription(SubscriptionMap* map, const char* key, const char* notif_pipe_path) {
     int index = hash(key);
-    //if (index == -1) return -1;
 
     // Verifica se existe no KVS
     if (read_pair(kvs_table, key) == NULL) {

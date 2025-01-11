@@ -8,6 +8,7 @@ DELETE [sete]
 READ [sete]
 BACKUP
 SHOW
+WAIT 10000
 DELETE [um]
 WRITE [(um,dois)(a,b)]
 DELETE [um]

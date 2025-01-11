@@ -17,9 +17,7 @@
 bool stop_notifications = false;
 
 void read_notifications(void* arg) {
-  //const char *notif_pipe_path = (const char *) arg;
   int *notif_pipe = (int *) arg;
-  //int notif_pipe = open(notif_pipe_path, O_RDONLY);
   char buffer[256];
   //Ciclo infinito sempre à espera de notificações
   while (!stop_notifications){
@@ -80,7 +78,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  //int notif_pipe = 0;
   // Thread para ler as notificações
   pthread_t notif_thread;
   pthread_create(&notif_thread, NULL, (void*) read_notifications, (void*) &notif_pipe);

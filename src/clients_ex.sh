@@ -29,7 +29,7 @@ echo "Starting new clients after SIGUSR1... OUTRA CENA"
 
 # Wait for the new clients to finish
 #wait
-sleep 2
+sleep 20
 
 # Optional: Gracefully terminate the server (e.g., with SIGTERM)
 kill -SIGTERM $SERVER_PID

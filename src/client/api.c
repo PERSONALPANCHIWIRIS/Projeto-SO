@@ -38,7 +38,6 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
   strncpy(notif_path, notif_pipe_path, sizeof(notif_path) - 1);
   notif_path[sizeof(notif_path) - 1] = '\0';
 
-  //snprintf(msg.data, sizeof(msg.data), "%s|%s|%s", req_pipe_path, resp_pipe_path, notif_pipe_path);
   snprintf(msg.data, sizeof(msg.data), "%s %s %s", req_path, resp_path, notif_path);
   //Envia os dados dos pipes ao servidor para que este possa comunicar com o cliente
   write_all(server_fd, &msg, sizeof(msg));
@@ -56,8 +55,6 @@ int kvs_connect(char const* req_pipe_path, char const* resp_pipe_path, char cons
 
   close(client_resp_fd);
   fprintf(stdout, "Server returned %c for operation: %c\n", response[1], response[0]);
-  // response[bytes_read] = '\0'; //Garantir que acaba em \0
-  // fprintf(stdout, "%s\n", response);
   return 0;
 }
  
@@ -85,8 +82,6 @@ int kvs_disconnect(const char* req_pipe_path, const char* resp_pipe_path) {
   }
   close(client_resp_fd);
   fprintf(stdout, "Server returned %d for operation: %d\n", response[1], response[0]);
-  // response[bytes_read] = '\0'; //Garantir que acaba em \0
-  // fprintf(stdout, "%s", response);
 
   //Depois de estar todo fechado do lado do server, fecha no cliente
   close(server_fd);
@@ -118,8 +113,6 @@ int kvs_subscribe(const char* key, const char* req_pipe_path, const char* resp_p
   close(client_resp_fd);
 
   fprintf(stdout, "Server returned %d for operation: %d\n", response[1], response[0]);
-  // response[bytes_read] = '\0'; //Garantir que acaba em \0
-  // fprintf(stdout, "%s", response);
 
   return 0;
 }
@@ -148,8 +141,6 @@ int kvs_unsubscribe(const char* key, const char* req_pipe_path, const char* resp
   }
   close(client_resp_fd);
   fprintf(stdout, "Server returned %d for operation: %d\n", response[1], response[0]);
-  // response[bytes_read] = '\0'; //Garantir que acaba em \0
-  // fprintf(stdout, "%s", response);
   
   return 0;
 }
