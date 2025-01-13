@@ -18,11 +18,13 @@
 
 int current_backup = 0;
 int current_threads = 0;
+int waiting_threads = 0;
 Queue q;
 volatile sig_atomic_t sigusr1_received = 0;
 
 pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t signal_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t waiting_lock = PTHREAD_MUTEX_INITIALIZER;
 sem_t client_sem;
 
 typedef struct ClientNode {
@@ -132,7 +134,8 @@ void destroy_client_queue(ClientQueue* queue) {
 }
 
 //OPERACOES COM CLIENTES--------------------------------------------------------------------------------------------------------------
-bool process_client_request(Message* msg, const char* resp_pipe_path, const char* notif_pipe_path,
+bool process_client_request(Message* msg, const char* resp_pipe_path,
+ const char* notif_pipe_path,
  int client_notif_fd, int client_req_fd) {
     int client_resp_fd = open(resp_pipe_path, O_WRONLY);
     switch (msg->opcode) {       
@@ -154,6 +157,9 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
             remove_all_subscriptions(subscription_map, notif_pipe_path);
             close(client_notif_fd); //Fecha o de notificações
             close(client_req_fd); //Fecha o de pedidos
+            pthread_mutex_lock(&waiting_lock);
+            waiting_threads--;
+            pthread_mutex_unlock(&waiting_lock);
             return true;
 
         case 3:
@@ -202,7 +208,8 @@ bool process_client_request(Message* msg, const char* resp_pipe_path, const char
 }
 
 //Le a mensagem do cliente e processa-a
-void process_client(const char* req_pipe_path, const char* resp_pipe_path, const char* notif_pipe_path, ClientNode* client) {
+void process_client(const char* req_pipe_path, const char* resp_pipe_path,
+ const char* notif_pipe_path, ClientNode* client) {
     bool done = false;
     int client_notif_fd = open(notif_pipe_path, O_WRONLY);//Abre o pipe de notificações para este cliente
     client->notif_pipe_fd = client_notif_fd;
@@ -211,6 +218,15 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
         // Ler pedido do cliente (bloqueante)
         int client_req_fd = open(req_pipe_path, O_RDONLY);
         client->req_pipe_fd = client_req_fd;
+        if (sigusr1_received == 1){
+            msg.opcode = 2;
+            done = process_client_request(&msg, resp_pipe_path, notif_pipe_path,
+            client->notif_pipe_fd, client->req_pipe_fd);
+            pthread_mutex_lock(&waiting_lock);
+            waiting_threads++;
+            pthread_mutex_unlock(&waiting_lock);
+            return;
+        }
         ssize_t bytes_read = read_all(client_req_fd, &msg, sizeof(msg), NULL);
         if (bytes_read <= 0) {
             if(errno == EBADF){
@@ -221,9 +237,11 @@ void process_client(const char* req_pipe_path, const char* resp_pipe_path, const
         }
 
         // Processar o pedido do cliente
-        //A necessidade de associar os fd à estrutura do cliente, vem de, no momento quando o SIGUSR1 é recebido,
+        //A necessidade de associar os fd à estrutura do cliente, vem de,
+        //no momento quando o SIGUSR1 é recebido,
         //ser necessário fechar os pipes de notificação e de resposta para todos os clientes
-        done = process_client_request(&msg, resp_pipe_path, notif_pipe_path, client->notif_pipe_fd, client->req_pipe_fd);
+        done = process_client_request(&msg, resp_pipe_path, notif_pipe_path,
+         client->notif_pipe_fd, client->req_pipe_fd);
     }
 }
 
@@ -238,6 +256,10 @@ void *thread_client(void *arg) {
     while (1) {
         sem_wait(&client_sem);
 
+        while (waiting_threads > 0) {
+            sleep(1); // Sleep for a short period to avoid busy waiting
+        }
+
         pthread_mutex_lock(&client_lock);
 
         ClientNode* temp = dequeue_client(pool_clients);
@@ -248,6 +270,7 @@ void *thread_client(void *arg) {
         pthread_mutex_unlock(&client_lock);
         process_client(temp->req_pipe_path, temp->resp_pipe_path, temp->notif_pipe_path, temp);
         free(temp);
+
     }
 }
 
@@ -260,7 +283,7 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR1);
 
-    // Block SIGUSR1 in all threads
+    //Bloqueia o sinal SIGUSR1 em todas as threads
     if (pthread_sigmask(SIG_BLOCK, &sigset, NULL) != 0) {
         perror("Failed to block SIGUSR1 in all threads");
         return;
@@ -299,15 +322,6 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
 
     while (1){  //Loop infinito a espera de clientes
         if (sigusr1_received == 1){
-            ClientNode* current = pool_clients->front;
-            while (current != NULL) {
-                Message msg;
-                msg.opcode = 2;
-                process_client_request(&msg, current->resp_pipe_path, current->notif_pipe_path, current->notif_pipe_fd, current->req_pipe_fd);
-                current = current->next;
-            }
-
-
 
             for (int i = 0; i < TABLE_SIZE; i++) {
                 pthread_mutex_lock(&subscription_map->lock[i]);
@@ -325,8 +339,16 @@ void master_task(ClientQueue* pool_clients, const char* server_fifo,
                 }
                 subscription_map->table[i] = NULL;
                 pthread_mutex_unlock(&subscription_map->lock[i]);
+
             }
 
+            pthread_mutex_lock(&waiting_lock);
+            while(waiting_threads > 0){
+                pthread_mutex_unlock(&waiting_lock);
+                sleep(1);
+                pthread_mutex_lock(&waiting_lock);
+            }
+            pthread_mutex_unlock(&waiting_lock);
             // Reset da flag do sinal
             sigusr1_received = 0;
         }
@@ -407,8 +429,9 @@ int main(int argc, char* argv[]) {
     }
 
     const char* dir_path = argv[1];
-    //Tira a pool de tarefas relacionadas com a diretoria
-    ClientQueue pool_clients; //Inicializa a pool de tarefas relacionadas com os clientes
+    ClientQueue pool_clients;
+    //Inicializa a pool de tarefas relacionadas com os clientes
+
     //inicializa a pool de tarefas dos jobs
     DIR *dir = iterates_files(dir_path, backup_limit);
 

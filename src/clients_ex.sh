@@ -6,6 +6,7 @@ rm -f register_fifo
 # Start the server in the background
 ./server/kvs ./server/jobs 3 3 register_fifo &
 SERVER_PID=$!  # Save the server PID
+sleep 5
 
 # Start clients in the background
 ./client/client c2 register_fifo < ./client/client_tests.txt &
@@ -20,16 +21,16 @@ echo "Sending SIGUSR1 to the server..."
 kill -SIGUSR1 $SERVER_PID &
 
 # Give the server time to process the signal
-sleep 2
+sleep 10
 
 # Start new clients after SIGUSR1
 echo "Starting new clients after SIGUSR1... OUTRA CENA" 
-./client/client c4 register_fifo < ./client/client_tests2.txt &
-./client/client c5 register_fifo < ./client/client_tests.txt &
+./client/client c4 register_fifo < ./client/client_tests3.txt &
+./client/client c5 register_fifo < ./client/client_tests3.txt &
 
 # Wait for the new clients to finish
 #wait
 sleep 20
 
-# Optional: Gracefully terminate the server (e.g., with SIGTERM)
+#Optional: Gracefully terminate the server (e.g., with SIGTERM)
 kill -SIGTERM $SERVER_PID
