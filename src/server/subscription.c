@@ -8,6 +8,9 @@
 #include "kvs.h"
 #include "../common/io.h"
 
+
+//-------------------------------------------------------------------------------------------CODE:
+
 //Função de hash baseada na da hashtable dos jobs
 static int hash(const char* key) {
     int firstLetter = tolower(key[0]);

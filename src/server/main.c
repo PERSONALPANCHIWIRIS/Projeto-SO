@@ -45,6 +45,7 @@ typedef struct ClientQueue {
 
 SubscriptionMap* subscription_map;
 
+//-------------------------------------------------------------------------------------------CODE:
 void* signal_handler_thread(void* arg) {
     sigset_t* sigset = (sigset_t*)arg;
     int sig;
@@ -255,10 +256,6 @@ void *thread_client(void *arg) {
     ClientQueue* pool_clients = (ClientQueue*) arg;
     while (1) {
         sem_wait(&client_sem);
-
-        while (waiting_threads > 0) {
-            sleep(1); // Sleep for a short period to avoid busy waiting
-        }
 
         pthread_mutex_lock(&client_lock);
 

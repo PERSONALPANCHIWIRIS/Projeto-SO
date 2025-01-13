@@ -33,7 +33,7 @@ void read_notifications(void* arg) {
 
 
 
-//CODE:
+//-------------------------------------------------------------------------------------------CODE:
 
 int main(int argc, char* argv[]) {
   if (argc < 3) {
