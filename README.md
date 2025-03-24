@@ -5,5 +5,5 @@ operações de escrita, leitura e remoção de dados. Implementação de paralel
 threads e semáforos. Cópias de segurança não bloqueantes, utilizando forks e mecanismos de comunicação
 entre processos (FIFOs e sinais). Expansão do sistema para um servidor multi-cliente, permitindo que
 acessos externos monitorizem alterações de dados através de named pipes e gestão de subscrições a dados
-especificos.
+especificos. Projeto desenvolvido em grupo.
 
